@@ -24,4 +24,8 @@ public interface BorrowingRepository extends JpaRepository<Borrowing, Long> {
     Page<Borrowing> findByKeywordAndStatus(String keyword, Borrowing.BorrowingStatus status, Pageable pageable);
 
     long countByBookIdAndStatusIn(Long bookId, List<Borrowing.BorrowingStatus> statusList);
+    
+    long countByUserIdAndStatusIn(Long userId, List<Borrowing.BorrowingStatus> statusList);
+    
+    boolean existsByUserIdAndBookIdAndStatusIn(Long userId, Long bookId, List<Borrowing.BorrowingStatus> statusList);
 } 

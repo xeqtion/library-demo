@@ -1,8 +1,9 @@
 package com.manage.librarydemo.security;
 
+import com.manage.librarydemo.config.AppProperties;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -13,16 +14,13 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Component
+@RequiredArgsConstructor
 public class JwtUtils {
 
-    @Value("${jwt.secret:defaultSecretKeyNeedsToBeAtLeast256BitsAndShouldBeChanged}")
-    private String secret;
-
-    @Value("${jwt.expiration:86400000}")
-    private long expiration;
+    private final AppProperties appProperties;
 
     private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+        return Keys.hmacShaKeyFor(appProperties.getJwt().getSecret().getBytes());
     }
     
     public String extractUsername(String token) {
@@ -60,7 +58,7 @@ public class JwtUtils {
                 .setClaims(claims)
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .setExpiration(new Date(System.currentTimeMillis() + appProperties.getJwt().getExpiration()))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

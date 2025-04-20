@@ -10,8 +10,8 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -24,10 +24,11 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public PageResult<UserDTO> getPage(com.manage.librarydemo.common.PageRequest pageRequest) {
-        org.springframework.data.domain.PageRequest pageable = PageRequest.of(
+        org.springframework.data.domain.PageRequest pageable = org.springframework.data.domain.PageRequest.of(
                 pageRequest.getPageNum() - 1,
                 pageRequest.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createTime")
@@ -72,8 +73,14 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         BeanUtils.copyProperties(userDTO, user);
         
-        // 默认为读者
-        if (user.getRole() == null) {
+        // 处理角色
+        if (userDTO.getRole() != null) {
+            try {
+                user.setRole(User.UserRole.valueOf(userDTO.getRole()));
+            } catch (IllegalArgumentException e) {
+                user.setRole(User.UserRole.READER); // 默认为读者
+            }
+        } else {
             user.setRole(User.UserRole.READER);
         }
         
@@ -102,7 +109,22 @@ public class UserServiceImpl implements UserService {
             userDTO.setPassword(user.getPassword());
         }
         
+        // 保存旧的角色
+        User.UserRole oldRole = user.getRole();
+        
         BeanUtils.copyProperties(userDTO, user);
+        
+        // 处理角色
+        if (userDTO.getRole() != null) {
+            try {
+                user.setRole(User.UserRole.valueOf(userDTO.getRole()));
+            } catch (IllegalArgumentException e) {
+                user.setRole(oldRole); // 如果转换失败，保持原角色
+            }
+        } else {
+            user.setRole(oldRole);
+        }
+        
         user = userRepository.save(user);
         return convertToDTO(user);
     }
@@ -119,9 +141,25 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new EntityNotFoundException("用户不存在"));
     }
 
+    @Override
+    public boolean verifyPassword(Long userId, String password) {
+        User user = findUserEntity(userId);
+        return passwordEncoder.matches(password, user.getPassword());
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(Long userId, String newPassword) {
+        User user = findUserEntity(userId);
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
     private UserDTO convertToDTO(User user) {
         UserDTO dto = new UserDTO();
         BeanUtils.copyProperties(user, dto);
+        // 设置角色为字符串
+        dto.setRole(user.getRole().name());
         // 不返回密码
         dto.setPassword(null);
         return dto;

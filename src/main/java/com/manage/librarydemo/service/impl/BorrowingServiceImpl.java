@@ -2,6 +2,7 @@ package com.manage.librarydemo.service.impl;
 
 import com.manage.librarydemo.common.PageRequest;
 import com.manage.librarydemo.common.PageResult;
+import com.manage.librarydemo.config.AppProperties;
 import com.manage.librarydemo.dto.BorrowingDTO;
 import com.manage.librarydemo.entity.Book;
 import com.manage.librarydemo.entity.Borrowing;
@@ -32,6 +33,7 @@ public class BorrowingServiceImpl implements BorrowingService {
     private final BorrowingRepository borrowingRepository;
     private final UserService userService;
     private final BookService bookService;
+    private final AppProperties appProperties;
 
     @Override
     public PageResult<BorrowingDTO> getPage(PageRequest pageRequest) {
@@ -95,6 +97,16 @@ public class BorrowingServiceImpl implements BorrowingService {
             throw new IllegalArgumentException("图书库存不足");
         }
         
+        // 检查用户借阅数量是否超过限制
+        long userBorrowedCount = borrowingRepository.countByBookIdAndStatusIn(
+                book.getId(), 
+                Arrays.asList(Borrowing.BorrowingStatus.BORROWED, Borrowing.BorrowingStatus.OVERDUE)
+        );
+        if (userBorrowedCount >= appProperties.getBorrowing().getMaxBooksPerUser()) {
+            throw new IllegalArgumentException("您已达到最大借阅数量限制(" + 
+                    appProperties.getBorrowing().getMaxBooksPerUser() + "本)");
+        }
+        
         // 创建借阅记录
         Borrowing borrowing = new Borrowing();
         borrowing.setUser(user);
@@ -104,7 +116,7 @@ public class BorrowingServiceImpl implements BorrowingService {
         // 设置默认借阅日期和归还日期
         LocalDate now = LocalDate.now();
         borrowing.setBorrowDate(now);
-        borrowing.setDueDate(now.plusDays(14)); // 默认借阅14天
+        borrowing.setDueDate(now.plusDays(appProperties.getBorrowing().getDefaultBorrowDays()));
         
         if (StringUtils.hasText(borrowingDTO.getRemarks())) {
             borrowing.setRemarks(borrowingDTO.getRemarks());
@@ -186,8 +198,37 @@ public class BorrowingServiceImpl implements BorrowingService {
             throw new IllegalArgumentException("只能续借已借出的图书");
         }
         
-        // 延长归还日期（7天）
-        borrowing.setDueDate(borrowing.getDueDate().plusDays(7));
+        // 检查是否已达到最大续借次数
+        int renewTimes = 0;
+        String remarks = borrowing.getRemarks();
+        if (remarks != null && remarks.contains("续借次数:")) {
+            String[] parts = remarks.split("续借次数:");
+            if (parts.length > 1) {
+                try {
+                    renewTimes = Integer.parseInt(parts[1].trim().split(" ")[0]);
+                } catch (NumberFormatException e) {
+                    // 忽略解析错误
+                }
+            }
+        }
+        
+        if (renewTimes >= appProperties.getBorrowing().getMaxRenewTimes()) {
+            throw new IllegalArgumentException("已达到最大续借次数(" + 
+                    appProperties.getBorrowing().getMaxRenewTimes() + "次)");
+        }
+        
+        // 延长归还日期
+        borrowing.setDueDate(borrowing.getDueDate().plusDays(appProperties.getBorrowing().getRenewDays()));
+        
+        // 更新续借次数
+        renewTimes++;
+        if (remarks == null || remarks.isEmpty()) {
+            borrowing.setRemarks("续借次数: " + renewTimes);
+        } else if (remarks.contains("续借次数:")) {
+            borrowing.setRemarks(remarks.replaceAll("续借次数:\\s*\\d+", "续借次数: " + renewTimes));
+        } else {
+            borrowing.setRemarks(remarks + " 续借次数: " + renewTimes);
+        }
         
         borrowing = borrowingRepository.save(borrowing);
         

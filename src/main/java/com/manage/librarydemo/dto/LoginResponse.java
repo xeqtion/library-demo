@@ -14,7 +14,7 @@ public class LoginResponse {
     
     private String email;
     
-    private User.UserRole role;
+    private String role;
     
     private String token;
 } 

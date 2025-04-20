@@ -16,4 +16,25 @@ spring:
         format_sql: true
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
-    time-zone: GMT+8 
+    time-zone: GMT+8
+
+# 应用自定义配置
+app:
+  jwt:
+    secret: librarymanagementsystemsecretkeyforauthentication
+    expiration: 86400000  # 24小时 (毫秒)
+  borrowing:
+    max-books-per-user: 5  # 每个用户最多可借阅的图书数量
+    default-borrow-days: 14  # 默认借阅天数
+    max-renew-times: 2  # 最大续借次数
+    renew-days: 7  # 每次续借增加的天数
+  admin:
+    register-code: "ADMIN_SECRET_2025"  # 管理员注册码，生产环境中应设置为复杂的随机字符串
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.manage.librarydemo: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE 
