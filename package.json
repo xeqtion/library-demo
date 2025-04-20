@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "axios": "^1.8.4",
+    "element-plus": "^2.9.8",
+    "pinia": "^3.0.2",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "unplugin-auto-import": "^19.1.2",
+    "unplugin-vue-components": "^28.5.0"
+  }
+}
