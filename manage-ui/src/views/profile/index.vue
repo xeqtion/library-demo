@@ -240,6 +240,7 @@ const changePassword = async () => {
     if (valid) {
       loading.value = true;
       try {
+        // 确保数据格式与后端期望的一致
         await changePasswordApi({
           oldPassword: passwordForm.value.oldPassword,
           newPassword: passwordForm.value.newPassword
@@ -254,6 +255,8 @@ const changePassword = async () => {
         };
       } catch (error) {
         console.error('修改密码失败', error);
+        // 显示详细错误信息
+        ElMessage.error('修改密码失败: ' + (error.message || '请检查输入是否正确'));
       } finally {
         loading.value = false;
       }
