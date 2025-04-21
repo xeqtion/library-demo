@@ -52,7 +52,7 @@ public class DashboardServiceImpl implements DashboardService {
         long totalUsers = userRepository.count();
         LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
         long newUsers = userRepository.findAll().stream()
-                .filter(user -> user.getCreateTime().isAfter(today))
+                .filter(user -> user.getCreateTime() != null && user.getCreateTime().isAfter(today))
                 .count();
 
         // 获取借阅相关统计

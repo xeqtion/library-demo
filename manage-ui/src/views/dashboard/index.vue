@@ -97,12 +97,12 @@
               <el-button v-else type="primary" link @click="$router.push('/my-borrowings')">查看我的借阅</el-button>
             </div>
           </template>
-          <el-table :data="recentBorrowings" style="width: 100%" :show-header="false">
+          <el-table :data="recentBorrowings" style="width: 100%" :show-header="false" height="330">
             <el-table-column>
               <template #default="scope">
                 <div class="borrowing-item">
                   <div class="borrowing-info">
-                    <div class="borrowing-title">《{{ scope.row.bookTitle }}》</div>
+                    <div class="borrowing-title" :title="scope.row.bookTitle">《{{ scope.row.bookTitle }}》</div>
                     <div class="borrowing-details">
                       <span>借阅人: {{ scope.row.userName }}</span>
                       <span>借阅日期: {{ formatDate(scope.row.borrowDate) }}</span>
@@ -131,7 +131,7 @@
               <el-button type="primary" link @click="$router.push('/library')">浏览全部</el-button>
             </div>
           </template>
-          <el-table :data="popularBooks" style="width: 100%" :show-header="false">
+          <el-table :data="popularBooks" style="width: 100%" :show-header="false" height="330">
             <el-table-column>
               <template #default="scope">
                 <div class="book-item">
@@ -139,11 +139,11 @@
                     <el-image :src="scope.row.coverImage || 'https://via.placeholder.com/80x100'" fit="cover"></el-image>
                   </div>
                   <div class="book-info">
-                    <div class="book-title">《{{ scope.row.title }}》</div>
-                    <div class="book-author">{{ scope.row.author }}</div>
+                    <div class="book-title" :title="scope.row.title">《{{ scope.row.title }}》</div>
+                    <div class="book-author" :title="scope.row.author">{{ scope.row.author }}</div>
                     <div class="book-details">
                       <el-tag size="small">{{ scope.row.category }}</el-tag>
-                      <span>借阅次数: {{ scope.row.borrowCount }}</span>
+                      <span>借阅: {{ scope.row.borrowCount }}次</span>
                     </div>
                   </div>
                 </div>
@@ -407,7 +407,9 @@ onMounted(async () => {
 
 .list-card {
   margin-bottom: 20px;
-  height: 400px;
+  height: 450px;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
@@ -440,7 +442,7 @@ onMounted(async () => {
 }
 
 .borrowing-item {
-  padding: 10px 0;
+  padding: 8px 0;
   border-bottom: 1px solid #EBEEF5;
 }
 
@@ -449,26 +451,31 @@ onMounted(async () => {
   color: #303133;
   font-weight: bold;
   margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .borrowing-details {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   font-size: 12px;
   color: #909399;
 }
 
 .book-item {
   display: flex;
-  padding: 10px 0;
+  padding: 8px 0;
   border-bottom: 1px solid #EBEEF5;
 }
 
 .book-cover {
-  width: 60px;
-  height: 80px;
-  margin-right: 15px;
+  min-width: 45px;
+  width: 45px;
+  height: 65px;
+  margin-right: 10px;
   overflow: hidden;
 }
 
@@ -481,18 +488,25 @@ onMounted(async () => {
   color: #303133;
   font-weight: bold;
   margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .book-author {
   font-size: 13px;
   color: #606266;
   margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .book-details {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   font-size: 12px;
   color: #909399;
 }
@@ -529,5 +543,11 @@ onMounted(async () => {
 
 .data-analysis-action {
   margin-left: 20px;
+}
+
+/* 添加表格容器样式 */
+.el-table {
+  flex: 1;
+  overflow-y: auto;
 }
 </style> 

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -88,6 +89,11 @@ public class UserServiceImpl implements UserService {
         if (user.getEnabled() == null) {
             user.setEnabled(true);
         }
+        
+        // 确保createTime不为null
+        if (user.getCreateTime() == null) {
+            user.setCreateTime(java.time.LocalDateTime.now());
+        }
 
         user = userRepository.save(user);
         return convertToDTO(user);
@@ -112,6 +118,9 @@ public class UserServiceImpl implements UserService {
         // 保存旧的角色
         User.UserRole oldRole = user.getRole();
         
+        // 保存原有的创建时间
+        LocalDateTime oldCreateTime = user.getCreateTime();
+        
         BeanUtils.copyProperties(userDTO, user);
         
         // 处理角色
@@ -123,6 +132,15 @@ public class UserServiceImpl implements UserService {
             }
         } else {
             user.setRole(oldRole);
+        }
+        
+        // 确保createTime不丢失
+        if (user.getCreateTime() == null) {
+            if (oldCreateTime != null) {
+                user.setCreateTime(oldCreateTime);
+            } else {
+                user.setCreateTime(java.time.LocalDateTime.now());
+            }
         }
         
         user = userRepository.save(user);
