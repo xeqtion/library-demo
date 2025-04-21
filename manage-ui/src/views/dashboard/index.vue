@@ -248,10 +248,11 @@ const getBorrowingStatusType = (status) => {
   switch (status) {
     case 'PENDING': return 'info';
     case 'APPROVED': return 'success';
+    case 'BORROWED': return 'success';
     case 'REJECTED': return 'danger';
-    case 'RETURNED': return '';
+    case 'RETURNED': return 'info';
     case 'OVERDUE': return 'warning';
-    default: return '';
+    default: return 'info';
   }
 };
 
@@ -259,11 +260,12 @@ const getBorrowingStatusType = (status) => {
 const getBorrowingStatusText = (status) => {
   switch (status) {
     case 'PENDING': return '待审核';
-    case 'APPROVED': return '已借出';
+    case 'APPROVED': return '已批准';
+    case 'BORROWED': return '借阅中';
     case 'REJECTED': return '已拒绝';
     case 'RETURNED': return '已归还';
     case 'OVERDUE': return '已逾期';
-    default: return '';
+    default: return '未知状态';
   }
 };
 
