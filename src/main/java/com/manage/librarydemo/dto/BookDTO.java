@@ -50,6 +50,9 @@ public class BookDTO {
 
     private Integer publishYear;
 
+    // 借阅次数（用于展示热门图书）
+    private Integer borrowCount;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

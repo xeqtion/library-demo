@@ -28,6 +28,14 @@ public class BorrowingDTO {
     
     private String bookTitle;
     
+    private String bookAuthor;
+    
+    private String bookIsbn;
+    
+    private String bookCategory;
+    
+    private String bookCover;
+    
     private LocalDate borrowDate;
     
     private LocalDate dueDate;

@@ -253,9 +253,9 @@ const handleLogin = async () => {
         localStorage.setItem('token', res.token);
         localStorage.setItem('userInfo', JSON.stringify(res));
         ElMessage.success('登录成功');
-        router.push('/');
+        router.push('/dashboard');
       } catch (error) {
-        ElMessage.error(error.message || '登录失败，请检查用户名和密码');
+        console.error('登录失败', error);
       } finally {
         loading.value = false;
       }
@@ -310,10 +310,8 @@ const handleAdminRegister = async () => {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-color: #f5f7fa;
-  background-image: url('@/assets/login-bg.jpg');
-  background-size: cover;
-  background-position: center;
+  background-color: #f0f2f5;
+  background: linear-gradient(to right, #3494e6, #ec6ead);
 }
 
 .login-card {

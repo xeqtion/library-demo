@@ -46,6 +46,13 @@ const routes = [
         component: () => import('../views/borrowing/index.vue'),
         meta: { title: '借阅管理', icon: 'Document', roles: ['ADMIN'] }
       },
+      // 统计分析
+      {
+        path: 'statistics',
+        name: 'Statistics',
+        component: () => import('../views/statistics/index.vue'),
+        meta: { title: '统计分析', icon: 'DataAnalysis', roles: ['ADMIN'] }
+      },
       // 图书浏览
       {
         path: 'library',
