@@ -2,6 +2,7 @@ package com.manage.librarydemo.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -44,6 +45,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/books/category/**").permitAll()
                 .requestMatchers("/api/books/**").authenticated()
                 .requestMatchers("/api/borrowings/my").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/borrowings").authenticated()
                 .requestMatchers("/api/borrowings/**").hasAuthority("ADMIN")
                 .anyRequest().authenticated()
             )
@@ -74,4 +76,4 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-} 
+}
