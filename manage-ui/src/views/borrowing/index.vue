@@ -288,6 +288,7 @@ const getBorrowingStatusType = (status) => {
   switch (status) {
     case 'PENDING': return 'info';
     case 'APPROVED': return 'success';
+    case 'BORROWED': return 'success';
     case 'REJECTED': return 'danger';
     case 'RETURNED': return '';
     case 'OVERDUE': return 'warning';
@@ -299,6 +300,7 @@ const getBorrowingStatusText = (status) => {
   switch (status) {
     case 'PENDING': return '待审核';
     case 'APPROVED': return '已借出';
+    case 'BORROWED': return '已借出';
     case 'REJECTED': return '已拒绝';
     case 'RETURNED': return '已归还';
     case 'OVERDUE': return '已逾期';
