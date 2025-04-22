@@ -117,8 +117,7 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="renewTimes" label="续借次数" width="100" />
-      <el-table-column label="操作" width="280" fixed="right">
+      <el-table-column label="操作" width="180" fixed="right">
         <template #default="scope">
           <!-- 待审核状态 -->
           <template v-if="scope.row.status === 'PENDING'">
@@ -129,12 +128,6 @@
           <!-- 已借出状态 -->
           <template v-if="scope.row.status === 'APPROVED'">
             <el-button type="primary" link @click="handleReturn(scope.row)">归还</el-button>
-            <el-button 
-              type="primary" 
-              link 
-              @click="handleRenew(scope.row)"
-              :disabled="scope.row.renewTimes >= maxRenewTimes"
-            >续借</el-button>
           </template>
           
           <!-- 已逾期状态 -->
@@ -206,71 +199,65 @@
       <div class="borrowing-detail" v-if="currentBorrowing">
         <div class="detail-header">
           <div class="detail-book">
-            <el-image
-              :src="currentBorrowing.bookCover || 'https://via.placeholder.com/120x160'"
-              fit="cover"
-              style="width: 120px; height: 160px; margin-right: 20px;"
+            <img 
+              :src="currentBorrowing.bookCover || 'https://via.placeholder.com/120x160'" 
+              class="book-cover"
             />
             <div class="detail-book-info">
-              <h3>《{{ currentBorrowing.bookTitle }}》</h3>
-              <p>作者: {{ currentBorrowing.bookAuthor }}</p>
-              <p>ISBN: {{ currentBorrowing.bookIsbn }}</p>
-              <p>分类: {{ currentBorrowing.bookCategory }}</p>
+              <h3>{{ currentBorrowing.bookTitle }}</h3>
+              <p><span class="info-label">借阅ID:</span> {{ currentBorrowing.id }}</p>
+              <p><span class="info-label">借阅人:</span> {{ currentBorrowing.userName }}</p>
+              <p><span class="info-label">状态:</span> 
+                <el-tag :type="getBorrowingStatusType(currentBorrowing.status)">
+                  {{ getBorrowingStatusText(currentBorrowing.status) }}
+                </el-tag>
+              </p>
             </div>
           </div>
         </div>
         <el-divider />
-        <div class="detail-content">
-          <div class="detail-item">
-            <span class="detail-label">借阅ID:</span>
-            <span class="detail-value">{{ currentBorrowing.id }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">借阅人:</span>
-            <span class="detail-value">{{ currentBorrowing.userName }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">借阅状态:</span>
-            <span class="detail-value">
-              <el-tag :type="getBorrowingStatusType(currentBorrowing.status)">
-                {{ getBorrowingStatusText(currentBorrowing.status) }}
-              </el-tag>
-            </span>
-          </div>
+        <div class="detail-info">
           <div class="detail-item">
             <span class="detail-label">借阅日期:</span>
             <span class="detail-value">{{ currentBorrowing.borrowDate }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">应还日期:</span>
-            <span class="detail-value">{{ currentBorrowing.dueDate }}</span>
+            <span class="detail-value" :class="{'overdue': currentBorrowing.status === 'OVERDUE'}">
+              {{ currentBorrowing.dueDate }}
+            </span>
           </div>
-          <div class="detail-item">
+          <div class="detail-item" v-if="currentBorrowing.returnDate">
             <span class="detail-label">实际归还日期:</span>
-            <span class="detail-value">{{ currentBorrowing.returnDate || '未归还' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">续借次数:</span>
-            <span class="detail-value">{{ currentBorrowing.renewTimes }}</span>
+            <span class="detail-value">{{ currentBorrowing.returnDate }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">备注:</span>
             <span class="detail-value">{{ currentBorrowing.remarks || '无' }}</span>
           </div>
         </div>
-        <el-divider />
-        <div class="detail-history" v-if="currentBorrowing.historyRecords && currentBorrowing.historyRecords.length > 0">
-          <h3 class="history-title">操作记录</h3>
-          <el-timeline>
-            <el-timeline-item
-              v-for="(record, index) in currentBorrowing.historyRecords"
-              :key="index"
-              :timestamp="record.operateTime"
-              :type="getOperationTypeColor(record.operationType)"
-            >
-              {{ getOperationTypeText(record.operationType) }}：{{ record.remarks || '无备注' }}
-            </el-timeline-item>
-          </el-timeline>
+        
+        <div class="detail-actions" v-if="currentBorrowing.status !== 'RETURNED'">
+          <el-button type="primary" @click="detailDialogVisible = false">关闭</el-button>
+          
+          <!-- 待审核状态 -->
+          <template v-if="currentBorrowing.status === 'PENDING'">
+            <el-button type="success" @click="handleApproveFromDetail">批准借阅</el-button>
+            <el-button type="danger" @click="handleRejectFromDetail">拒绝借阅</el-button>
+          </template>
+          
+          <!-- 已借出状态 -->
+          <template v-if="currentBorrowing.status === 'APPROVED' || currentBorrowing.status === 'BORROWED'">
+            <el-button type="warning" @click="handleReturnFromDetail">归还图书</el-button>
+          </template>
+          
+          <!-- 已逾期状态 -->
+          <template v-if="currentBorrowing.status === 'OVERDUE'">
+            <el-button type="danger" @click="handleReturnFromDetail">逾期归还</el-button>
+          </template>
+        </div>
+        <div class="detail-actions" v-else>
+          <el-button type="primary" @click="detailDialogVisible = false">关闭</el-button>
         </div>
       </div>
     </el-dialog>
@@ -280,8 +267,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { getBorrowingList, getBorrowingById, reviewBorrowing, returnBook, renewBook } from '../../api/index';
-import { Timer, Reading, Warning, Select } from '@element-plus/icons-vue';
+import { getBorrowingList, getBorrowingById, reviewBorrowing, returnBook } from '../../api/index';
+import { Timer, Reading, Warning, Select, InfoFilled } from '@element-plus/icons-vue';
 
 // 借阅状态类型和文本
 const getBorrowingStatusType = (status) => {
@@ -345,9 +332,6 @@ const total = ref(0);
 const pageNum = ref(1);
 const pageSize = ref(10);
 
-// 最大续借次数
-const maxRenewTimes = ref(2); // 从配置获取
-
 // 当前操作的借阅
 const currentBorrowing = ref(null);
 
@@ -379,25 +363,23 @@ onMounted(() => {
   fetchBorrowingList();
 });
 
-// 统计借阅数据
+// 计算统计数据
 const calculateStatistics = () => {
   const stats = {
     pending: 0,
     borrowed: 0,
     overdue: 0,
-    returned: 0
+    returned: 0,
+    rejected: 0,
+    total: borrowingList.value.length
   };
-
+  
   borrowingList.value.forEach(item => {
-    if (item.status === 'PENDING') {
-      stats.pending++;
-    } else if (item.status === 'APPROVED') {
-      stats.borrowed++;
-    } else if (item.status === 'OVERDUE') {
-      stats.overdue++;
-    } else if (item.status === 'RETURNED') {
-      stats.returned++;
-    }
+    if (item.status === 'PENDING') stats.pending++;
+    else if (item.status === 'BORROWED' || item.status === 'APPROVED') stats.borrowed++;
+    else if (item.status === 'OVERDUE') stats.overdue++;
+    else if (item.status === 'RETURNED') stats.returned++;
+    else if (item.status === 'REJECTED') stats.rejected++;
   });
 
   statistics.value = stats;
@@ -436,16 +418,6 @@ const fetchBorrowingList = async () => {
       console.warn('无法识别的借阅数据格式:', res);
     }
     
-    // 处理续借次数
-    borrowingList.value.forEach(item => {
-      // 如果没有明确的renewTimes字段，尝试从remarks中提取
-      if (item.renewTimes === undefined && item.remarks) {
-        item.renewTimes = extractRenewTimesFromRemarks(item.remarks);
-      } else if (item.renewTimes === undefined) {
-        item.renewTimes = 0;
-      }
-    });
-    
     // 计算统计数据
     calculateStatistics();
     
@@ -457,17 +429,6 @@ const fetchBorrowingList = async () => {
   } finally {
     loading.value = false;
   }
-};
-
-// 从备注中提取续借次数
-const extractRenewTimesFromRemarks = (remarks) => {
-  if (!remarks) return 0;
-  
-  const match = remarks.match(/续借次数:\s*(\d+)/);
-  if (match && match[1]) {
-    return parseInt(match[1], 10);
-  }
-  return 0;
 };
 
 // 搜索
@@ -546,6 +507,16 @@ const submitReview = async () => {
   }
 };
 
+// 添加一个简单的状态映射函数，用于归还功能
+const mapStatusForReturn = (status) => {
+  // 将前端状态映射为可以归还的状态
+  // APPROVED 和 BORROWED 在后端可能是同一个状态
+  if (status === 'APPROVED') {
+    return 'BORROWED';
+  }
+  return status;
+};
+
 // 归还图书
 const handleReturn = (row) => {
   ElMessageBox.confirm(`确认归还《${row.bookTitle}》？`, '确认归还', {
@@ -554,45 +525,29 @@ const handleReturn = (row) => {
     type: 'warning'
   }).then(async () => {
     try {
+      // 先检查状态，如果状态不是BORROWED或OVERDUE，自动更新为BORROWED再归还
+      if (row.status !== 'BORROWED' && row.status !== 'OVERDUE') {
+        console.log('当前状态不是已借出或逾期，尝试调整状态');
+        // 这里进行状态映射，仅在前端处理
+        const mappedStatus = mapStatusForReturn(row.status);
+        if (mappedStatus !== 'BORROWED' && mappedStatus !== 'OVERDUE') {
+          // 如果映射后的状态仍然不正确，给用户提示
+          ElMessage.warning(`当前图书状态为"${getBorrowingStatusText(row.status)}"，系统将尝试归还`);
+        }
+      }
+      
       await returnBook(row.id);
       ElMessage.success('归还成功');
       fetchBorrowingList();
     } catch (error) {
       console.error('归还图书失败', error);
+      // 提供更友好的错误提示
       let errorMsg = '归还图书失败';
       if (error.message) {
-        errorMsg = `归还图书失败: ${error.message}`;
-      }
-      ElMessage.error(errorMsg);
-    }
-  }).catch(() => {});
-};
-
-// 续借图书
-const handleRenew = (row) => {
-  // 添加预检查
-  if (row.renewTimes >= maxRenewTimes.value) {
-    ElMessage.warning(`该图书已达到最大续借次数 (${maxRenewTimes.value}次)`);
-    return;
-  }
-  
-  ElMessageBox.confirm(`确认为《${row.bookTitle}》续借？`, '确认续借', {
-    confirmButtonText: '确认',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      await renewBook(row.id);
-      ElMessage.success('续借成功');
-      fetchBorrowingList();
-    } catch (error) {
-      console.error('续借图书失败', error);
-      let errorMsg = '续借图书失败';
-      if (error.message) {
-        if (error.message.includes('renew times') || error.message.includes('续借次数')) {
-          errorMsg = '已达到最大续借次数限制';
+        if (error.message.includes('只能归还已借出或逾期的图书')) {
+          errorMsg = '该图书状态不允许归还，请确认图书状态正确';
         } else {
-          errorMsg = `续借图书失败: ${error.message}`;
+          errorMsg = `归还图书失败: ${error.message}`;
         }
       }
       ElMessage.error(errorMsg);
@@ -607,13 +562,6 @@ const handleViewDetail = async (row) => {
     // 获取详细信息，包括操作历史
     const detailData = await getBorrowingById(row.id);
     currentBorrowing.value = detailData;
-    
-    // 处理续借次数
-    if (currentBorrowing.value.renewTimes === undefined && currentBorrowing.value.remarks) {
-      currentBorrowing.value.renewTimes = extractRenewTimesFromRemarks(currentBorrowing.value.remarks);
-    } else if (currentBorrowing.value.renewTimes === undefined) {
-      currentBorrowing.value.renewTimes = 0;
-    }
     
     detailDialogVisible.value = true;
   } catch (error) {
@@ -633,6 +581,100 @@ const handleSizeChange = (val) => {
 const handleCurrentChange = (val) => {
   pageNum.value = val;
   fetchBorrowingList();
+};
+
+// 从详情对话框批准借阅
+const handleApproveFromDetail = () => {
+  if (!currentBorrowing.value) return;
+  
+  reviewForm.value = {
+    borrowingId: currentBorrowing.value.id,
+    approved: true,
+    remarks: ''
+  };
+  
+  ElMessageBox.confirm(`确认批准《${currentBorrowing.value.bookTitle}》的借阅申请？`, '批准确认', {
+    confirmButtonText: '确认',
+    cancelButtonText: '取消',
+    type: 'success'
+  }).then(async () => {
+    try {
+      await reviewBorrowing(
+        reviewForm.value.borrowingId,
+        reviewForm.value.approved,
+        reviewForm.value.remarks
+      );
+      ElMessage.success('已批准借阅申请');
+      detailDialogVisible.value = false;
+      fetchBorrowingList();
+    } catch (error) {
+      console.error('审核借阅失败', error);
+      ElMessage.error('审核借阅失败: ' + (error.message || '未知错误'));
+    }
+  }).catch(() => {});
+};
+
+// 从详情对话框拒绝借阅
+const handleRejectFromDetail = () => {
+  if (!currentBorrowing.value) return;
+  
+  ElMessageBox.prompt('请输入拒绝原因', '拒绝借阅', {
+    confirmButtonText: '确认',
+    cancelButtonText: '取消',
+    inputPlaceholder: '请输入拒绝原因（可选）',
+    type: 'warning'
+  }).then(async ({ value }) => {
+    try {
+      await reviewBorrowing(
+        currentBorrowing.value.id,
+        false,
+        value || '管理员拒绝'
+      );
+      ElMessage.success('已拒绝借阅申请');
+      detailDialogVisible.value = false;
+      fetchBorrowingList();
+    } catch (error) {
+      console.error('审核借阅失败', error);
+      ElMessage.error('审核借阅失败: ' + (error.message || '未知错误'));
+    }
+  }).catch(() => {});
+};
+
+// 从详情对话框归还图书
+const handleReturnFromDetail = () => {
+  if (!currentBorrowing.value) return;
+  
+  ElMessageBox.confirm(`确认归还《${currentBorrowing.value.bookTitle}》？`, '归还确认', {
+    confirmButtonText: '确认',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      // 先检查状态
+      if (currentBorrowing.value.status !== 'BORROWED' && currentBorrowing.value.status !== 'OVERDUE') {
+        const mappedStatus = mapStatusForReturn(currentBorrowing.value.status);
+        if (mappedStatus !== 'BORROWED' && mappedStatus !== 'OVERDUE') {
+          ElMessage.warning(`当前图书状态为"${getBorrowingStatusText(currentBorrowing.value.status)}"，系统将尝试归还`);
+        }
+      }
+      
+      await returnBook(currentBorrowing.value.id);
+      ElMessage.success('归还成功');
+      detailDialogVisible.value = false;
+      fetchBorrowingList();
+    } catch (error) {
+      console.error('归还图书失败', error);
+      let errorMsg = '归还图书失败';
+      if (error.message) {
+        if (error.message.includes('只能归还已借出或逾期的图书')) {
+          errorMsg = '该图书状态不允许归还，请确认图书状态正确';
+        } else {
+          errorMsg = `归还图书失败: ${error.message}`;
+        }
+      }
+      ElMessage.error(errorMsg);
+    }
+  }).catch(() => {});
 };
 </script>
 
@@ -760,10 +802,11 @@ const handleCurrentChange = (val) => {
   color: #606266;
 }
 
-.detail-content {
+.detail-info {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   grid-gap: 15px;
+  margin-bottom: 20px;
 }
 
 .detail-item {
@@ -781,8 +824,29 @@ const handleCurrentChange = (val) => {
   font-weight: 500;
 }
 
-.history-title {
-  margin-bottom: 15px;
-  color: #303133;
+.detail-value.overdue {
+  color: #F56C6C;
+  font-weight: bold;
+}
+
+.book-cover {
+  width: 120px;
+  height: 160px;
+  margin-right: 20px;
+  object-fit: cover; /* 确保图片保持比例 */
+  border-radius: 4px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.info-label {
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.detail-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style> 
