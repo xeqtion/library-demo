@@ -434,12 +434,38 @@ export const getBookList = (pageNum, pageSize, query) => {
           author: '刘慈欣',
           isbn: '9787536692930',
           category: '科幻小说',
-          description: '中国科幻文学的代表作',
+          description: '《三体》是刘慈欣创作的系列长篇科幻小说的第一部，是以上世纪六七十年代为背景的科幻作品。',
           totalCopies: 15,
           availableCopies: 12,
           publisher: '重庆出版社',
           publishYear: 2008,
           coverImage: 'https://img1.doubanio.com/view/subject/l/public/s2768378.jpg'
+        },
+        {
+          id: 13,
+          title: '三体2：黑暗森林',
+          author: '刘慈欣',
+          isbn: '9787536693968',
+          category: '科幻小说',
+          description: '三体三部曲的第二部，讲述了地球文明与三体文明的战争故事。',
+          totalCopies: 12,
+          availableCopies: 11,
+          publisher: '重庆出版社',
+          publishYear: 2008,
+          coverImage: 'https://img9.doubanio.com/view/subject/l/public/s3078482.jpg'
+        },
+        {
+          id: 14,
+          title: '三体3：死神永生',
+          author: '刘慈欣',
+          isbn: '9787229030933',
+          category: '科幻小说',
+          description: '三体三部曲的第三部，完美收官之作。',
+          totalCopies: 10,
+          availableCopies: 8,
+          publisher: '重庆出版社',
+          publishYear: 2010,
+          coverImage: 'https://img2.doubanio.com/view/subject/l/public/s26012674.jpg'
         },
         {
           id: 5,
@@ -546,10 +572,10 @@ export const getBookList = (pageNum, pageSize, query) => {
           coverImage: 'https://img1.doubanio.com/view/subject/l/public/s33718605.jpg'
         }
       ],
-      total: 12,
+      total: 14,
       pageNum: pageNum || 1,
       pageSize: pageSize || 10,
-      pages: Math.ceil(12 / (pageSize || 10))
+      pages: Math.ceil(14 / (pageSize || 10))
     };
   });
 };
@@ -653,12 +679,25 @@ export const getBooksByCategory = (category, pageNum, pageSize) => {
         author: '刘慈欣',
         isbn: '9787536692930',
         category: '科幻小说',
-        description: '中国科幻文学的代表作',
+        description: '《三体》是刘慈欣创作的系列长篇科幻小说的第一部，是以上世纪六七十年代为背景的科幻作品。',
         totalCopies: 15,
         availableCopies: 12,
         publisher: '重庆出版社',
         publishYear: 2008,
         coverImage: 'https://img1.doubanio.com/view/subject/l/public/s2768378.jpg'
+      },
+      {
+        id: 13,  // 修改ID，确保与三体不重复
+        title: '三体2：黑暗森林',
+        author: '刘慈欣',
+        isbn: '9787536693968',
+        category: '科幻小说',
+        description: '三体三部曲的第二部，讲述了地球文明与三体文明的战争故事。',
+        totalCopies: 12,
+        availableCopies: 11,
+        publisher: '重庆出版社',
+        publishYear: 2008,
+        coverImage: 'https://img9.doubanio.com/view/subject/l/public/s3078482.jpg'
       },
       {
         id: 5,

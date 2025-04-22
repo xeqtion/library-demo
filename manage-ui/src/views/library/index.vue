@@ -19,7 +19,7 @@
         <el-tag
           :effect="selectedCategory === '' ? 'dark' : 'plain'"
           @click="handleCategorySelect('')"
-          style="cursor: pointer; margin-right: 8px;"
+          style="cursor: pointer; margin-right: 8px; margin-bottom: 8px;"
         >
           全部
         </el-tag>
@@ -280,30 +280,45 @@ const fetchBooks = async () => {
     console.log('获取到的图书数据:', res);
     
     // 改进数据解析逻辑，处理不同格式的响应
+    let bookList = [];
     if (res && res.data) {
       if (res.data.list && Array.isArray(res.data.list)) {
-        books.value = res.data.list;
+        bookList = res.data.list;
         total.value = res.data.total || 0;
       } else if (res.data.records && Array.isArray(res.data.records)) {
-        books.value = res.data.records;
+        bookList = res.data.records;
         total.value = res.data.total || 0;
-      } else {
-        books.value = [];
-        total.value = 0;
       }
     } else if (res && res.list && Array.isArray(res.list)) {
-      books.value = res.list;
+      bookList = res.list;
       total.value = res.total || 0;
     } else if (res && res.records && Array.isArray(res.records)) {
-      books.value = res.records;
+      bookList = res.records;
       total.value = res.total || 0;
     } else if (res && Array.isArray(res)) {
-      books.value = res;
+      bookList = res;
       total.value = res.length;
     } else {
       console.warn('返回的图书数据格式不正确:', res);
-      books.value = [];
+      bookList = [];
       total.value = 0;
+    }
+    
+    // 对图书列表进行去重处理
+    const uniqueMap = new Map();
+    bookList.forEach(book => {
+      // 如果不存在相同ID的图书，则添加到Map中
+      if (!uniqueMap.has(book.id)) {
+        uniqueMap.set(book.id, book);
+      }
+    });
+    
+    // 将Map转换为数组
+    books.value = Array.from(uniqueMap.values());
+    
+    // 更新总数
+    if (!total.value || total.value > books.value.length) {
+      total.value = books.value.length;
     }
     
     // 处理封面图片默认值
