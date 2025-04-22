@@ -189,9 +189,14 @@ public class BorrowingServiceImpl implements BorrowingService {
 
     @Override
     @Transactional
-    public BorrowingDTO renewBook(Long id) {
+    public BorrowingDTO renewBook(Long id, Long userId) {
         Borrowing borrowing = borrowingRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("借阅记录不存在"));
+        
+        // 验证用户权限
+        if (userId != null && !borrowing.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("没有权限操作此借阅记录");
+        }
         
         // 只有借出状态才能续借
         if (borrowing.getStatus() != Borrowing.BorrowingStatus.BORROWED) {
@@ -212,22 +217,28 @@ public class BorrowingServiceImpl implements BorrowingService {
             }
         }
         
-        if (renewTimes >= appProperties.getBorrowing().getMaxRenewTimes()) {
+        // 检查是否已达到最大续借次数(最多1次)
+        int maxRenewTimes = appProperties.getBorrowing().getMaxRenewTimes();
+        if (renewTimes >= maxRenewTimes) {
             throw new IllegalArgumentException("已达到最大续借次数(" + 
-                    appProperties.getBorrowing().getMaxRenewTimes() + "次)");
+                    maxRenewTimes + "次)");
         }
         
-        // 延长归还日期
-        borrowing.setDueDate(borrowing.getDueDate().plusDays(appProperties.getBorrowing().getRenewDays()));
+        // 延长归还日期（30天）
+        int renewDays = appProperties.getBorrowing().getRenewDays();
+        borrowing.setDueDate(borrowing.getDueDate().plusDays(renewDays));
         
         // 更新续借次数
         renewTimes++;
+        String renewInfo = "续借次数: " + renewTimes + " (+" + renewDays + "天, " + 
+                LocalDate.now().toString() + ")";
+        
         if (remarks == null || remarks.isEmpty()) {
-            borrowing.setRemarks("续借次数: " + renewTimes);
+            borrowing.setRemarks(renewInfo);
         } else if (remarks.contains("续借次数:")) {
-            borrowing.setRemarks(remarks.replaceAll("续借次数:\\s*\\d+", "续借次数: " + renewTimes));
+            borrowing.setRemarks(remarks.replaceAll("续借次数:.*?[\\)\\n]", renewInfo + ")"));
         } else {
-            borrowing.setRemarks(remarks + " 续借次数: " + renewTimes);
+            borrowing.setRemarks(remarks + " " + renewInfo);
         }
         
         borrowing = borrowingRepository.save(borrowing);
@@ -237,9 +248,14 @@ public class BorrowingServiceImpl implements BorrowingService {
 
     @Override
     @Transactional
-    public void cancel(Long id) {
+    public void cancel(Long id, Long userId) {
         Borrowing borrowing = borrowingRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("借阅记录不存在"));
+        
+        // 验证用户权限
+        if (userId != null && !borrowing.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("没有权限操作此借阅记录");
+        }
         
         // 只有待审核状态才能取消
         if (borrowing.getStatus() != Borrowing.BorrowingStatus.PENDING) {
@@ -260,6 +276,20 @@ public class BorrowingServiceImpl implements BorrowingService {
             borrowing.setStatus(Borrowing.BorrowingStatus.OVERDUE);
             borrowingRepository.save(borrowing);
         }
+    }
+
+    @Override
+    @Transactional
+    public BorrowingDTO renewBook(Long id) {
+        // 调用带用户ID的方法，传入null表示管理员操作
+        return renewBook(id, null);
+    }
+
+    @Override
+    @Transactional
+    public void cancel(Long id) {
+        // 调用带用户ID的方法，传入null表示管理员操作
+        cancel(id, null);
     }
 
     private BorrowingDTO convertToDTO(Borrowing borrowing) {

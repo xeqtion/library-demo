@@ -21,7 +21,11 @@ public interface BorrowingService {
     
     BorrowingDTO renewBook(Long id);
     
+    BorrowingDTO renewBook(Long id, Long userId);
+    
     void cancel(Long id);
+    
+    void cancel(Long id, Long userId);
     
     void checkOverdue();
 } 

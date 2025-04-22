@@ -44,8 +44,20 @@
       <el-table-column prop="category" label="分类" width="120" show-overflow-tooltip />
       <el-table-column label="库存" width="140">
         <template #default="scope">
-          <div>总数: {{ scope.row.totalCopies }}</div>
-          <div>可借: {{ scope.row.availableCopies }}</div>
+          <div>
+            <span>总数: {{ scope.row.totalCopies }}</span>
+            <el-tag 
+              :type="scope.row.availableCopies > 0 ? 'success' : 'danger'" 
+              size="small" 
+              style="margin-left: 5px;" 
+              v-if="scope.row.availableCopies === 0"
+            >
+              无库存
+            </el-tag>
+          </div>
+          <div :class="{ 'text-warning': scope.row.availableCopies === 0 }">
+            可借: {{ scope.row.availableCopies }}
+          </div>
         </template>
       </el-table-column>
       <el-table-column prop="publisher" label="出版社" show-overflow-tooltip />
@@ -125,10 +137,23 @@
               <div class="upload-tip">点击上传封面图片</div>
             </el-form-item>
             <el-form-item label="总数量" prop="totalCopies">
-              <el-input-number v-model="bookForm.totalCopies" :min="0" style="width: 100%;" />
+              <el-input-number 
+                v-model="bookForm.totalCopies" 
+                :min="0" 
+                style="width: 100%;" 
+                @change="handleTotalCopiesChange"
+              />
             </el-form-item>
             <el-form-item label="可借数量" prop="availableCopies">
-              <el-input-number v-model="bookForm.availableCopies" :min="0" :max="bookForm.totalCopies" style="width: 100%;" />
+              <el-input-number 
+                v-model="bookForm.availableCopies" 
+                :min="0" 
+                :max="bookForm.totalCopies" 
+                style="width: 100%;" 
+              />
+              <div class="form-tip" v-if="bookForm.totalCopies < bookForm.availableCopies">
+                可借数量不能超过总数量
+              </div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -229,68 +254,34 @@ const bookForm = ref({
 // 表单验证规则
 const rules = {
   title: [
-    { required: true, message: '请输入图书标题', trigger: 'blur' },
-    { min: 1, max: 100, message: '标题长度应在1-100个字符之间', trigger: 'blur' }
+    { required: true, message: '请输入图书名称', trigger: 'blur' }
   ],
   author: [
-    { required: true, message: '请输入作者', trigger: 'blur' },
-    { min: 1, max: 50, message: '作者名称长度应在1-50个字符之间', trigger: 'blur' }
+    { required: true, message: '请输入作者', trigger: 'blur' }
   ],
   isbn: [
-    { required: true, message: '请输入ISBN', trigger: 'blur' },
-    { pattern: /^(?:\d[- ]?){9}[\dX]$|^(?:\d[- ]?){13}$/, message: 'ISBN格式不正确', trigger: 'blur' }
+    { required: true, message: '请输入ISBN', trigger: 'blur' }
   ],
   category: [
-    { required: true, message: '请选择图书分类', trigger: 'change' }
-  ],
-  publisher: [
-    { required: true, message: '请选择出版社', trigger: 'change' }
+    { required: true, message: '请选择分类', trigger: 'change' }
   ],
   totalCopies: [
-    { required: true, message: '请输入总册数', trigger: 'blur' },
-    { type: 'number', message: '总册数必须为数字', trigger: 'blur' },
-    { validator: (rule, value, callback) => {
-        if (value < 0) {
-          callback(new Error('总册数不能小于0'));
-        } else {
-          // 当总册数变化时，检查可借册数是否合法
-          if (bookForm.value.availableCopies > value) {
-            bookForm.value.availableCopies = value;
-          }
-          callback();
-        }
-      }, trigger: 'blur' 
-    }
+    { required: true, message: '请输入总数量', trigger: 'blur' },
+    { type: 'number', min: 0, message: '总数量不能小于0', trigger: 'blur' }
   ],
   availableCopies: [
-    { required: true, message: '请输入可借册数', trigger: 'blur' },
-    { type: 'number', message: '可借册数必须为数字', trigger: 'blur' },
-    { validator: (rule, value, callback) => {
-        if (value < 0) {
-          callback(new Error('可借册数不能小于0'));
-        } else if (value > bookForm.value.totalCopies) {
-          callback(new Error('可借册数不能大于总册数'));
+    { required: true, message: '请输入可借数量', trigger: 'blur' },
+    { type: 'number', min: 0, message: '可借数量不能小于0', trigger: 'blur' },
+    { 
+      validator: (rule, value, callback) => {
+        if (value > bookForm.value.totalCopies) {
+          callback(new Error('可借数量不能超过总数量'));
         } else {
           callback();
         }
-      }, trigger: 'blur'
+      }, 
+      trigger: 'blur' 
     }
-  ],
-  publishYear: [
-    { required: true, message: '请输入出版年份', trigger: 'blur' },
-    { type: 'number', message: '出版年份必须为数字', trigger: 'blur' },
-    { validator: (rule, value, callback) => {
-        const currentYear = new Date().getFullYear();
-        if (value < 1800 || value > currentYear) {
-          callback(new Error(`出版年份必须在1800-${currentYear}之间`));
-        } else {
-          callback();
-        }
-      }, trigger: 'blur'
-    }
-  ],
-  description: [
-    { max: 500, message: '描述不能超过500个字符', trigger: 'blur' }
   ]
 };
 
@@ -300,7 +291,7 @@ const bookFormRef = ref(null);
 // 初始化
 onMounted(async () => {
   await loadCategories();
-  fetchBookList();
+  fetchBooks();
 });
 
 // 加载分类数据
@@ -314,7 +305,7 @@ const loadCategories = async () => {
 };
 
 // 获取图书列表
-const fetchBookList = async () => {
+const fetchBooks = async () => {
   loading.value = true;
   try {
     const res = await getBookList(pageNum.value, pageSize.value, searchForm.value);
@@ -388,7 +379,7 @@ const fetchBookList = async () => {
 // 搜索
 const handleSearch = () => {
   pageNum.value = 1;
-  fetchBookList();
+  fetchBooks();
 };
 
 // 重置搜索
@@ -398,7 +389,7 @@ const resetSearch = () => {
     category: ''
   };
   pageNum.value = 1;
-  fetchBookList();
+  fetchBooks();
 };
 
 // 添加图书
@@ -443,11 +434,18 @@ const handleDelete = (row) => {
     try {
       await deleteBook(row.id);
       ElMessage.success('删除成功');
-      fetchBookList();
+      fetchBooks();
     } catch (error) {
       console.error('删除图书失败', error);
     }
   }).catch(() => {});
+};
+
+// 处理总数量变化
+const handleTotalCopiesChange = (value) => {
+  if (bookForm.value.availableCopies > value) {
+    bookForm.value.availableCopies = value;
+  }
 };
 
 // 提交表单
@@ -456,24 +454,33 @@ const submitForm = async () => {
   
   await bookFormRef.value.validate(async (valid) => {
     if (valid) {
+      // 确保可借数量不超过总数量
+      if (bookForm.value.availableCopies > bookForm.value.totalCopies) {
+        ElMessage.error('可借数量不能超过总数量');
+        return;
+      }
+      
       submitting.value = true;
       try {
         if (bookForm.value.id) {
-          // 编辑
+          // 更新图书
           await updateBook(bookForm.value);
-          ElMessage.success('编辑成功');
+          ElMessage.success('更新图书成功');
         } else {
-          // 新增
+          // 新增图书
           await createBook(bookForm.value);
-          ElMessage.success('添加成功');
+          ElMessage.success('添加图书成功');
         }
         dialogVisible.value = false;
-        fetchBookList();
+        fetchBooks();
       } catch (error) {
-        console.error('提交图书数据失败', error);
+        console.error('保存图书失败', error);
+        ElMessage.error('保存图书失败: ' + (error.message || '未知错误'));
       } finally {
         submitting.value = false;
       }
+    } else {
+      console.log('表单验证失败');
     }
   });
 };
@@ -500,13 +507,13 @@ const beforeCoverUpload = (file) => {
 // 分页大小变化
 const handleSizeChange = (val) => {
   pageSize.value = val;
-  fetchBookList();
+  fetchBooks();
 };
 
 // 当前页变化
 const handleCurrentChange = (val) => {
   pageNum.value = val;
-  fetchBookList();
+  fetchBooks();
 };
 </script>
 
@@ -620,5 +627,17 @@ const handleCurrentChange = (val) => {
   color: #606266;
   line-height: 1.6;
   white-space: pre-line;
+}
+
+.text-warning {
+  color: #F56C6C;
+  font-weight: bold;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #F56C6C;
+  line-height: 1;
+  margin-top: 5px;
 }
 </style> 

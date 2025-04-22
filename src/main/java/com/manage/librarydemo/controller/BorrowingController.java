@@ -50,13 +50,13 @@ public class BorrowingController {
     }
 
     @PutMapping("/renew/{id}")
-    public Result<BorrowingDTO> renewBook(@PathVariable Long id) {
-        return Result.success(borrowingService.renewBook(id));
+    public Result<BorrowingDTO> renewBook(@PathVariable Long id, @RequestParam(required = false) Long userId) {
+        return Result.success(borrowingService.renewBook(id, userId));
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> cancel(@PathVariable Long id) {
-        borrowingService.cancel(id);
+    public Result<Void> cancel(@PathVariable Long id, @RequestParam(required = false) Long userId) {
+        borrowingService.cancel(id, userId);
         return Result.success();
     }
 } 

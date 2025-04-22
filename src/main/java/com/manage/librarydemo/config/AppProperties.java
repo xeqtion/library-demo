@@ -23,8 +23,8 @@ public class AppProperties {
     public static class Borrowing {
         private int maxBooksPerUser = 5; // 每个用户最多可借阅的图书数量
         private int defaultBorrowDays = 14; // 默认借阅天数
-        private int maxRenewTimes = 2; // 最大续借次数
-        private int renewDays = 7; // 每次续借增加的天数
+        private int maxRenewTimes = 1; // 最大续借次数，修改为1次
+        private int renewDays = 30; // 每次续借增加的天数，修改为30天
     }
     
     @Data

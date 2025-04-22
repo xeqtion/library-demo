@@ -31,6 +31,13 @@
             <span>已归还</span>
           </div>
         </div>
+        <div class="stat-item rejected">
+          <div class="stat-value">{{ borrowingsStats.rejected }}</div>
+          <div class="stat-label">
+            <el-icon><Close /></el-icon>
+            <span>已拒绝</span>
+          </div>
+        </div>
       </div>
     </el-card>
 
@@ -54,21 +61,24 @@
         <div v-for="item in borrowings" :key="item.id" class="borrowing-item">
           <div class="book-info">
             <h3 class="book-title">{{ item.bookTitle }}</h3>
-            <div class="book-meta">
-              <span>作者: {{ item.bookAuthor }}</span>
-              <span>ISBN: {{ item.isbn }}</span>
-            </div>
             <div class="borrow-meta">
               <span>借阅日期: {{ item.borrowDate }}</span>
               <span>应还日期: {{ item.dueDate }}</span>
               <span v-if="item.returnDate">归还日期: {{ item.returnDate }}</span>
-              <span v-if="item.renewTimes > 0">已续借 {{ item.renewTimes }} 次</span>
+              <span v-if="item.renewTimes > 0" class="renew-info">
+                已续借 {{ item.renewTimes }} 次
+                <el-tooltip content="每本书最多可续借1次，续借期限为30天" placement="top">
+                  <el-icon><InfoFilled /></el-icon>
+                </el-tooltip>
+              </span>
             </div>
           </div>
           
           <div class="book-status">
             <el-tag :type="getBorrowingStatusType(item.status)">
               {{ getBorrowingStatusText(item.status) }}
+              <!-- 调试信息，上线前注释掉 -->
+              <span class="debug-info" v-if="false">状态:{{ item.status }}</span>
             </el-tag>
             
             <div class="action-buttons">
@@ -95,8 +105,9 @@
                   size="small" 
                   type="success"
                   :disabled="item.renewTimes >= maxRenewTimes"
+                  :title="item.renewTimes >= maxRenewTimes ? '已达到最大续借次数' : '续借30天'"
                   @click="handleRenew(item)">
-                  续借
+                  续借{{ item.renewTimes === 0 ? '(30天)' : '' }}
                 </el-button>
               </template>
               
@@ -141,7 +152,7 @@ const filterStatus = ref('');
 const pageNum = ref(1);
 const pageSize = ref(10);
 const total = ref(0);
-const maxRenewTimes = ref(2); // 最大续借次数，可以从配置获取
+const maxRenewTimes = ref(1); // 最大续借次数改为1次
 const userInfo = ref(null);
 const isAdmin = ref(false); // 添加标记用户是否为管理员的变量
 
@@ -156,25 +167,29 @@ const borrowingsStats = ref({
 
 // 借阅状态样式
 const getBorrowingStatusType = (status) => {
-  switch (status) {
+  if (!status) return 'info';
+  
+  switch (status.toUpperCase()) {
     case 'PENDING': return 'info';
     case 'APPROVED': return 'success';
     case 'REJECTED': return 'danger';
-    case 'RETURNED': return '';
+    case 'RETURNED': return 'info';
     case 'OVERDUE': return 'warning';
-    default: return '';
+    default: return 'info';
   }
 };
 
 // 借阅状态文本
 const getBorrowingStatusText = (status) => {
-  switch (status) {
+  if (!status) return '未知状态';
+  
+  switch (status.toUpperCase()) {
     case 'PENDING': return '待审核';
     case 'APPROVED': return '借阅中';
     case 'REJECTED': return '已拒绝';
     case 'RETURNED': return '已归还';
     case 'OVERDUE': return '已逾期';
-    default: return '';
+    default: return `状态(${status})`;  // 显示未知状态的值
   }
 };
 
@@ -235,6 +250,27 @@ const fetchBorrowings = async () => {
       if (!item.isbn && item.bookIsbn) {
         item.isbn = item.bookIsbn;
       }
+      // 添加库存提示
+      if (item.bookAvailableCopies !== undefined && item.bookAvailableCopies === 0) {
+        item.inventoryInfo = '库存不足';
+      }
+      
+      // 确保状态字段正确映射
+      if (!item.status && item.borrowingStatus) {
+        item.status = item.borrowingStatus;
+      }
+      
+      // 处理状态值大小写不一致的问题
+      if (item.status && typeof item.status === 'string') {
+        item.status = item.status.toUpperCase();  // 统一转为大写
+      }
+      
+      // 为可能的空状态或未知状态设置默认值
+      if (!item.status || !['PENDING', 'APPROVED', 'REJECTED', 'RETURNED', 'OVERDUE'].includes(item.status)) {
+        console.warn('发现未知状态:', item.status, '，设置为待审核');
+        item.status = 'PENDING';
+      }
+      
       return item;
     });
     
@@ -289,6 +325,30 @@ const createMockBorrowings = () => {
       returnDate: null,
       status: 'PENDING',
       renewTimes: 0
+    },
+    {
+      id: 4,
+      bookId: 4,
+      bookTitle: '算法导论',
+      bookAuthor: 'Thomas H. Cormen',
+      isbn: '9787111407010',
+      borrowDate: '2025-04-07',
+      dueDate: '2025-04-21',
+      returnDate: null,
+      status: 'REJECTED',
+      renewTimes: 0
+    },
+    {
+      id: 5,
+      bookId: 5,
+      bookTitle: '人类简史',
+      bookAuthor: '尤瓦尔·赫拉利',
+      isbn: '9787508647357',
+      borrowDate: '2025-03-15',
+      dueDate: '2025-04-05',
+      returnDate: null,
+      status: 'OVERDUE',
+      renewTimes: 1
     }
   ];
   total.value = borrowings.value.length;
@@ -341,26 +401,37 @@ const handleRenew = (item) => {
     return;
   }
   
-  ElMessageBox.confirm(`确认续借《${item.bookTitle}》？`, '续借确认', {
-    confirmButtonText: '确认',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
+  ElMessageBox.confirm(
+    `确认续借《${item.bookTitle}》？
+    • 续借后将延长还书期限30天
+    • 每本书最多只能续借1次`, 
+    '续借确认', 
+    {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
     try {
       await renewBook(item.id);
-      ElMessage.success('续借申请已提交');
+      ElMessage.success('续借成功，借阅期限已延长30天');
       fetchBorrowings();
     } catch (error) {
       console.error('续借失败', error);
+      if (error.message && error.message.includes('已达到最大续借次数')) {
+        ElMessage.error(error.message);
+        return;
+      }
+      
       // 在API失败时模拟操作成功
-      ElMessage.success('续借成功(模拟)');
+      ElMessage.success('续借成功(模拟)，借阅期限已延长30天');
       // 模拟数据更新：增加续借次数并延长到期日期
       const index = borrowings.value.findIndex(b => b.id === item.id);
       if (index !== -1) {
         borrowings.value[index].renewTimes += 1;
-        // 模拟延长14天
+        // 模拟延长30天
         const dueDate = new Date(borrowings.value[index].dueDate);
-        dueDate.setDate(dueDate.getDate() + 14);
+        dueDate.setDate(dueDate.getDate() + 30);
         borrowings.value[index].dueDate = dueDate.toISOString().split('T')[0];
         calculateStats();
       }
@@ -444,6 +515,27 @@ onMounted(() => {
   align-items: center;
 }
 
+/* 状态颜色 */
+.stat-item.pending .stat-value {
+  color: #909399; /* 灰色 */
+}
+
+.stat-item.borrowed .stat-value {
+  color: #67C23A; /* 绿色 */
+}
+
+.stat-item.overdue .stat-value {
+  color: #E6A23C; /* 橙色 */
+}
+
+.stat-item.returned .stat-value {
+  color: #409EFF; /* 蓝色 */
+}
+
+.stat-item.rejected .stat-value {
+  color: #F56C6C; /* 红色 */
+}
+
 .filter-container {
   margin-bottom: 20px;
 }
@@ -474,11 +566,6 @@ onMounted(() => {
   margin-bottom: 5px;
 }
 
-.book-meta {
-  font-size: 14px;
-  color: #666;
-}
-
 .borrow-meta {
   font-size: 14px;
   color: #999;
@@ -488,6 +575,15 @@ onMounted(() => {
   text-align: right;
 }
 
+.book-status .el-tag {
+  min-width: 60px;
+  text-align: center;
+  margin-bottom: 8px;
+  padding: 0 10px;
+  height: 28px;
+  line-height: 26px;
+}
+
 .action-buttons {
   margin-top: 10px;
 }
@@ -495,5 +591,16 @@ onMounted(() => {
 .pagination-container {
   margin-top: 20px;
   text-align: right;
+}
+
+.renew-info {
+  color: #E6A23C;
+  font-weight: bold;
+}
+
+.debug-info {
+  margin-left: 5px;
+  font-size: 12px;
+  color: #aaa;
 }
 </style> 

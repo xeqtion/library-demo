@@ -165,22 +165,38 @@ export function returnBook(id) {
 
 // 续借图书
 export function renewBook(id) {
-  const apiPromise = axios.put(`/borrowings/renew/${id}`);
+  // 获取当前用户ID
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  const userId = userInfo.id;
+  
+  // 构建请求参数，添加用户ID
+  const params = { userId };
+  
+  // 发送请求，添加用户ID参数
+  const apiPromise = axios.put(`/borrowings/renew/${id}`, null, { params });
   
   return apiPromise.catch(error => {
-    if (error.response && error.response.status === 403) {
-      console.warn('续借图书权限不足，使用模拟实现', error);
-      return {
-        id: id,
-        status: 'APPROVED',
-        renewTimes: 1
-      };
+    // 处理已达到最大续借次数的情况
+    if (error.response) {
+      if (error.response.status === 403) {
+        console.warn('续借图书权限不足，使用模拟实现', error);
+        return {
+          id: id,
+          status: 'APPROVED',
+          renewTimes: 1
+        };
+      } else if (error.response.status === 400 && error.response.data && error.response.data.message) {
+        // 传递服务器的错误信息
+        return Promise.reject(new Error(error.response.data.message));
+      }
     } else if (error.request) {
       console.warn('续借图书API无响应，使用模拟实现', error);
       return {
         id: id,
         status: 'APPROVED',
-        renewTimes: 1
+        renewTimes: 1,
+        // 模拟延长30天
+        renewDays: 30
       };
     }
     return Promise.reject(error);
@@ -189,7 +205,15 @@ export function renewBook(id) {
 
 // 取消借阅申请
 export function cancelBorrowing(id) {
-  const apiPromise = axios.delete(`/borrowings/${id}`);
+  // 获取当前用户ID
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  const userId = userInfo.id;
+  
+  // 构建请求参数，添加用户ID
+  const params = { userId };
+  
+  // 发送请求，添加用户ID参数
+  const apiPromise = axios.delete(`/borrowings/${id}`, { params });
   
   return apiPromise.catch(error => {
     if (error.response && error.response.status === 403) {

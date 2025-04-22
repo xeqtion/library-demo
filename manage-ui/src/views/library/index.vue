@@ -50,7 +50,7 @@
             :lazy="true"
             loading="lazy"
           />
-          <div class="book-status" :class="{ 'available': book.availableCopies > 0 }">
+          <div class="book-status" :class="{ 'available': book.availableCopies > 0, 'unavailable': book.availableCopies <= 0 }">
             {{ book.availableCopies > 0 ? '可借阅' : '已借完' }}
           </div>
         </div>
@@ -59,7 +59,9 @@
           <div class="book-author">{{ book.author }}</div>
           <div class="book-meta">
             <el-tag size="small" effect="plain">{{ book.category }}</el-tag>
-            <span class="book-copies">库存: {{ book.availableCopies }}/{{ book.totalCopies }}</span>
+            <span class="book-copies" :class="{ 'no-stock': book.availableCopies <= 0 }">
+              库存: {{ book.availableCopies }}/{{ book.totalCopies }}
+            </span>
           </div>
           <div class="book-actions">
             <el-button
@@ -67,6 +69,7 @@
               size="small"
               @click.stop="handleBorrow(book)"
               :disabled="book.availableCopies <= 0"
+              :title="book.availableCopies <= 0 ? '图书库存不足，暂时无法借阅' : '申请借阅此书'"
             >
               借阅
             </el-button>
@@ -175,8 +178,12 @@
                 {{ currentBook.availableCopies > 0 ? '可借阅' : '已借完' }}
               </el-tag>
             </p>
-            <p class="detail-item">
-              <span class="detail-label">可借数量:</span> {{ currentBook.availableCopies }}/{{ currentBook.totalCopies }}
+            <p class="detail-item" :class="{ 'inventory-warning': currentBook.availableCopies <= 0 }">
+              <span class="detail-label">可借数量:</span> 
+              <span>{{ currentBook.availableCopies }}/{{ currentBook.totalCopies }}</span>
+              <el-tooltip content="图书库存不足，暂时无法借阅" v-if="currentBook.availableCopies <= 0" placement="top">
+                <el-icon class="warning-icon"><Warning /></el-icon>
+              </el-tooltip>
             </p>
           </div>
         </div>
@@ -185,8 +192,14 @@
           <h3 class="detail-section-title">图书简介</h3>
           <p class="detail-description-content">{{ currentBook.description || '暂无简介' }}</p>
         </div>
-        <div class="detail-actions" v-if="currentBook.availableCopies > 0">
-          <el-button type="primary" @click="handleBorrow(currentBook)">借阅此书</el-button>
+        <div class="detail-actions">
+          <el-button 
+            type="primary" 
+            @click="handleBorrow(currentBook)"
+            :disabled="currentBook.availableCopies <= 0"
+          >
+            {{ currentBook.availableCopies > 0 ? '借阅此书' : '暂无库存' }}
+          </el-button>
         </div>
       </div>
     </el-dialog>
@@ -197,6 +210,7 @@
 import { ref, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getBookList, getBookCategories, getBooksByCategory, createBorrowing } from '../../api/index';
+import { Search, Warning } from '@element-plus/icons-vue';
 
 // 用户信息
 const userInfo = ref({});
@@ -359,6 +373,12 @@ const handleCurrentChange = (val) => {
 
 // 借阅图书
 const handleBorrow = (book) => {
+  // 再次检查库存，以防库存在页面加载后发生变化
+  if (book.availableCopies <= 0) {
+    ElMessage.error('该图书库存不足，暂时无法借阅');
+    return;
+  }
+  
   if (!userInfo.value.id) {
     ElMessage.warning('请先登录');
     return;
@@ -379,6 +399,13 @@ const submitBorrow = async () => {
   
   await borrowFormRef.value.validate(async (valid) => {
     if (valid) {
+      // 再次检查库存
+      if (currentBook.value.availableCopies <= 0) {
+        ElMessage.error('该图书库存不足，暂时无法借阅');
+        borrowDialogVisible.value = false;
+        return;
+      }
+      
       submitting.value = true;
       try {
         // 添加用户ID
@@ -390,9 +417,17 @@ const submitBorrow = async () => {
         await createBorrowing(borrowData);
         ElMessage.success('借阅申请已提交，请等待管理员审核');
         borrowDialogVisible.value = false;
+        
+        // 在前端预先减少图书可借库存，以提供即时反馈
+        const bookIndex = books.value.findIndex(b => b.id === currentBook.value.id);
+        if (bookIndex !== -1 && books.value[bookIndex].availableCopies > 0) {
+          books.value[bookIndex].availableCopies--;
+        }
+        
         fetchBooks(); // 刷新图书列表
       } catch (error) {
         console.error('提交借阅申请失败', error);
+        ElMessage.error('提交借阅申请失败: ' + (error.message || '未知错误'));
       } finally {
         submitting.value = false;
       }
@@ -484,6 +519,12 @@ const handleViewDetail = (book) => {
   background-color: #67C23A;
 }
 
+.book-status.unavailable {
+  background-color: #F56C6C;
+  color: white;
+  font-weight: bold;
+}
+
 .book-info {
   padding: 14px;
 }
@@ -521,6 +562,11 @@ const handleViewDetail = (book) => {
 .book-copies {
   font-size: 12px;
   color: #909399;
+}
+
+.book-copies.no-stock {
+  color: #F56C6C;
+  font-weight: bold;
 }
 
 .book-actions {
@@ -586,5 +632,16 @@ const handleViewDetail = (book) => {
 
 .detail-actions {
   margin-top: 20px;
+}
+
+.inventory-warning {
+  color: #F56C6C;
+  font-weight: bold;
+}
+
+.warning-icon {
+  color: #F56C6C;
+  margin-left: 5px;
+  vertical-align: middle;
 }
 </style> 
