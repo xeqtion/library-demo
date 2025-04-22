@@ -766,7 +766,11 @@ export const createBorrowing = (borrowingData) => {
 export const reviewBorrowing = (id, approved, remarks) => {
   // 根据approved布尔值确定要发送的status
   const status = approved ? 'APPROVED' : 'REJECTED';
-  return instance.put(`/borrowings/review/${id}`, { status, remarks });
+  let url = `/borrowings/review/${id}?status=${status}`;
+  if (remarks) {
+    url += `&remarks=${encodeURIComponent(remarks)}`;
+  }
+  return instance.put(url);
 };
 
 export const returnBook = (id) => {

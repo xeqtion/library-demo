@@ -21,8 +21,8 @@ export function borrowBook(data) {
 }
 
 // 审核借阅申请
-export function reviewBorrowing(id, data) {
-  return put(`/borrowings/review/${id}`, data);
+export function reviewBorrowing(id, status, remarks) {
+  return put(`/borrowings/review/${id}?status=${status}`, { remarks });
 }
 
 // 归还图书

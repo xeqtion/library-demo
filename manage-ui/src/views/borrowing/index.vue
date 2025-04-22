@@ -517,7 +517,6 @@ const handleReject = (row) => {
 const submitReview = async () => {
   submitting.value = true;
   try {
-    const status = reviewForm.value.approved ? 'APPROVED' : 'REJECTED';
     await reviewBorrowing(
       reviewForm.value.borrowingId,
       reviewForm.value.approved,

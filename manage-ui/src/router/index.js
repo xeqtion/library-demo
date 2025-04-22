@@ -64,7 +64,7 @@ const routes = [
       {
         path: 'my-borrowings',
         name: 'MyBorrowings',
-        component: () => import('../views/my-borrowing/index.vue'),
+        component: () => import('../views/my-borrowings/index.vue'),
         meta: { title: '我的借阅', icon: 'Tickets' }
       },
       // 个人信息
