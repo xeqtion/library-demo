@@ -172,7 +172,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { getUserList, createUser, updateUser, deleteUser, resetUserPassword } from '../../api/index';
+import { getUserList, createUser, updateUser, deleteUser, resetUserPassword, getUserById, updateUserStatus } from '../../api/index';
 
 // 当前登录用户信息
 const userInfo = ref({});
@@ -273,82 +273,46 @@ onMounted(() => {
 const fetchUserList = async () => {
   loading.value = true;
   try {
-    console.log('正在请求用户数据，参数:', { pageNum: pageNum.value, pageSize: pageSize.value, ...searchForm.value });
     const res = await getUserList(pageNum.value, pageSize.value, searchForm.value);
     console.log('获取到的用户数据:', res);
     
-    // 尝试正确解析返回结果
-    if (res && typeof res === 'object') {
-      if (res.list && Array.isArray(res.list)) {
-        userList.value = res.list;
-        total.value = res.total || res.list.length;
-      } else if (Array.isArray(res)) {
-        // 如果直接返回了数组
-        userList.value = res;
-        total.value = res.length;
+    // 改进数据解析逻辑
+    if (res && res.data) {
+      // 处理嵌套在data中的情况
+      if (res.data.list && Array.isArray(res.data.list)) {
+        userList.value = res.data.list;
+        total.value = res.data.total || 0;
+      } else if (res.data.records && Array.isArray(res.data.records)) {
+        userList.value = res.data.records;
+        total.value = res.data.total || 0;
       } else {
-        console.warn('返回的数据格式不正确:', res);
         userList.value = [];
         total.value = 0;
       }
+    } else if (res && res.list && Array.isArray(res.list)) {
+      // 直接在res中的情况
+      userList.value = res.list;
+      total.value = res.total || 0;
+    } else if (res && res.records && Array.isArray(res.records)) {
+      // 另一种常见格式
+      userList.value = res.records;
+      total.value = res.total || 0;
+    } else if (res && Array.isArray(res)) {
+      // 直接返回了数组的情况
+      userList.value = res;
+      total.value = res.length;
     } else {
-      console.warn('返回的数据不是对象:', res);
+      console.warn('返回的数据格式不正确:', res);
       userList.value = [];
       total.value = 0;
     }
-    
-    if (userList.value.length === 0) {
-      // 尝试直接从数据库查询结果图片加载测试数据
-      console.warn('获取到的用户列表为空，加载测试数据');
-      userList.value = [
-        {
-          id: 1,
-          username: 'admin',
-          name: '管理员',
-          email: 'admin@example.com',
-          role: 'ADMIN',
-          enabled: true,
-          createTime: '2023-04-20 21:30:15'
-        },
-        {
-          id: 2,
-          username: 'reader',
-          name: '读者',
-          email: 'reader@example.com',
-          role: 'READER',
-          enabled: true,
-          createTime: '2023-04-20 21:30:15'
-        }
-      ];
-      total.value = userList.value.length;
-    }
   } catch (error) {
     console.error('加载用户列表失败', error);
-    // 显示错误信息给用户
     ElMessage.error('加载用户列表失败: ' + (error.message || '请检查网络或后端服务'));
     
-    // 加载测试数据作为备用
-    userList.value = [
-      {
-        id: 1,
-        username: 'admin',
-        name: '管理员',
-        email: 'admin@example.com',
-        role: 'ADMIN',
-        enabled: true,
-        createTime: '2023-04-20 21:30:15'
-      },
-      {
-        id: 2,
-        username: 'reader',
-        name: '读者',
-        email: 'reader@example.com',
-        role: 'READER',
-        enabled: true,
-        createTime: '2023-04-20 21:30:15'
-      }
-    ];
-    total.value = userList.value.length;
+    // 移除测试数据加载，避免掩盖真实问题
+    userList.value = [];
+    total.value = 0;
   } finally {
     loading.value = false;
   }
@@ -460,15 +424,14 @@ const submitForm = async () => {
 // 修改用户状态
 const handleStatusChange = async (row) => {
   try {
-    await updateUser({
-      id: row.id,
-      enabled: row.enabled
-    });
+    // 使用专门的状态更新API
+    await updateUserStatus(row.id, row.enabled);
     ElMessage.success(`已${row.enabled ? '启用' : '禁用'}该用户`);
   } catch (error) {
     // 还原状态
     row.enabled = !row.enabled;
     console.error('修改用户状态失败', error);
+    ElMessage.error('修改用户状态失败: ' + (error.response?.data?.message || error.message || '未知错误'));
   }
 };
 
@@ -484,6 +447,9 @@ const handleDelete = (row) => {
       ElMessage.success('删除成功');
       fetchUserList();
     } catch (error) {
+      // 显示详细的错误信息
+      const errorMsg = error.response?.data?.message || '删除用户失败';
+      ElMessage.error(errorMsg);
       console.error('删除用户失败', error);
     }
   }).catch(() => {});

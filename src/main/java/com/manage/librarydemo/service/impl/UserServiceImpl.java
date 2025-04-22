@@ -3,7 +3,9 @@ package com.manage.librarydemo.service.impl;
 import com.manage.librarydemo.common.PageRequest;
 import com.manage.librarydemo.common.PageResult;
 import com.manage.librarydemo.dto.UserDTO;
+import com.manage.librarydemo.entity.Borrowing;
 import com.manage.librarydemo.entity.User;
+import com.manage.librarydemo.repository.BorrowingRepository;
 import com.manage.librarydemo.repository.UserRepository;
 import com.manage.librarydemo.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -26,6 +29,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final BorrowingRepository borrowingRepository;
 
     @Override
     public PageResult<UserDTO> getPage(com.manage.librarydemo.common.PageRequest pageRequest) {
@@ -150,6 +154,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void delete(Long id) {
+        // 检查该用户是否有借阅记录
+        if (hasBorrowingRecords(id)) {
+            throw new IllegalStateException("该用户有未完成的借阅记录，无法删除");
+        }
         userRepository.deleteById(id);
     }
 
@@ -171,6 +179,23 @@ public class UserServiceImpl implements UserService {
         User user = findUserEntity(userId);
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    /**
+     * 检查用户是否有借阅记录
+     * @param userId 用户ID
+     * @return 是否有借阅记录
+     */
+    private boolean hasBorrowingRecords(Long userId) {
+        // 从borrowingRepository查询用户的借阅记录数量
+        return borrowingRepository.countByUserIdAndStatusIn(
+                userId,
+                Arrays.asList(
+                    Borrowing.BorrowingStatus.PENDING,
+                    Borrowing.BorrowingStatus.BORROWED,
+                    Borrowing.BorrowingStatus.OVERDUE
+                )
+        ) > 0;
     }
 
     private UserDTO convertToDTO(User user) {

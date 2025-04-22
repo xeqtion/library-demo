@@ -76,8 +76,35 @@ public class UserController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public Result<Void> delete(@PathVariable Long id) {
-        userService.delete(id);
-        return Result.success();
+        try {
+            userService.delete(id);
+            return Result.success();
+        } catch (IllegalStateException e) {
+            // 用户有借阅记录等无法删除的情况
+            return Result.error(e.getMessage());
+        } catch (Exception e) {
+            return Result.error("删除用户失败：" + e.getMessage());
+        }
+    }
+    
+    /**
+     * 更新用户状态（启用/禁用）
+     */
+    @PutMapping("/status")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public Result<Void> updateStatus(@RequestBody UserDTO userDTO) {
+        try {
+            if (userDTO.getId() == null) {
+                return Result.error("用户ID不能为空");
+            }
+            
+            UserDTO existingUser = userService.getById(userDTO.getId());
+            existingUser.setEnabled(userDTO.getEnabled());
+            userService.update(existingUser);
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error("更新用户状态失败：" + e.getMessage());
+        }
     }
     
     /**

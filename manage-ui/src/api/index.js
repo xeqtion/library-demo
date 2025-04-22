@@ -315,28 +315,15 @@ export const getUserById = (id) => {
   const apiPromise = instance.get(`/users/${id}`);
   
   return handleApiError(apiPromise, () => {
-    // 模拟数据
-    if (id == 1) {
-      return {
-        id: 1,
-        username: 'admin',
-        name: '管理员',
-        email: 'admin@example.com',
-        role: 'ADMIN',
-        enabled: true,
-        createTime: '2023-04-20 21:30:15'
-      };
-    } else {
-      return {
-        id: 2,
-        username: 'reader',
-        name: '读者',
-        email: 'reader@example.com',
-        role: 'READER',
-        enabled: true,
-        createTime: '2023-04-20 21:30:15'
-      };
-    }
+    // 模拟获取用户详情
+    return {
+      id: id,
+      username: 'user_' + id,
+      name: '用户' + id,
+      email: 'user' + id + '@example.com',
+      role: 'READER',
+      enabled: true
+    };
   });
 };
 
@@ -380,6 +367,16 @@ export const resetUserPassword = (userId, password) => {
   return handleApiError(apiPromise, () => {
     // 模拟重置密码成功，返回null
     return null;
+  });
+};
+
+// 更新用户状态
+export const updateUserStatus = (id, enabled) => {
+  const apiPromise = instance.put(`/users/status`, { id, enabled });
+  
+  return handleApiError(apiPromise, () => {
+    // 模拟更新状态
+    return { id, enabled };
   });
 };
 
