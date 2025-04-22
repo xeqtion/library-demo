@@ -37,18 +37,18 @@
 
     <div v-loading="loading" class="book-grid">
       <el-empty v-if="books.length === 0" description="暂无图书" />
-      <el-card
+      <div
         v-for="book in books"
         :key="book.id"
         class="book-card"
-        :body-style="{ padding: '0px' }"
-        shadow="hover"
+        @click="handleViewDetail(book)"
       >
         <div class="book-cover">
           <el-image
-            :src="book.coverImage || 'https://via.placeholder.com/150x200'"
+            :src="book.coverImage"
             fit="cover"
-            :preview-src-list="book.coverImage ? [book.coverImage] : []"
+            :lazy="true"
+            loading="lazy"
           />
           <div class="book-status" :class="{ 'available': book.availableCopies > 0 }">
             {{ book.availableCopies > 0 ? '可借阅' : '已借完' }}
@@ -58,14 +58,14 @@
           <div class="book-title" :title="book.title">{{ book.title }}</div>
           <div class="book-author">{{ book.author }}</div>
           <div class="book-meta">
-            <el-tag size="small">{{ book.category }}</el-tag>
-            <span class="book-copies">可借: {{ book.availableCopies }}/{{ book.totalCopies }}</span>
+            <el-tag size="small" effect="plain">{{ book.category }}</el-tag>
+            <span class="book-copies">库存: {{ book.availableCopies }}/{{ book.totalCopies }}</span>
           </div>
           <div class="book-actions">
             <el-button
               type="primary"
               size="small"
-              @click="handleBorrow(book)"
+              @click.stop="handleBorrow(book)"
               :disabled="book.availableCopies <= 0"
             >
               借阅
@@ -74,13 +74,13 @@
               type="info"
               plain
               size="small"
-              @click="handleViewDetail(book)"
+              @click.stop="handleViewDetail(book)"
             >
               详情
             </el-button>
           </div>
         </div>
-      </el-card>
+      </div>
     </div>
 
     <div class="pagination-container">
@@ -277,10 +277,46 @@ const fetchBooks = async () => {
       res = await getBookList(pageNum.value, pageSize.value, params);
     }
     
-    books.value = res.list;
-    total.value = res.total;
+    console.log('获取到的图书数据:', res);
+    
+    // 改进数据解析逻辑，处理不同格式的响应
+    if (res && res.data) {
+      if (res.data.list && Array.isArray(res.data.list)) {
+        books.value = res.data.list;
+        total.value = res.data.total || 0;
+      } else if (res.data.records && Array.isArray(res.data.records)) {
+        books.value = res.data.records;
+        total.value = res.data.total || 0;
+      } else {
+        books.value = [];
+        total.value = 0;
+      }
+    } else if (res && res.list && Array.isArray(res.list)) {
+      books.value = res.list;
+      total.value = res.total || 0;
+    } else if (res && res.records && Array.isArray(res.records)) {
+      books.value = res.records;
+      total.value = res.total || 0;
+    } else if (res && Array.isArray(res)) {
+      books.value = res;
+      total.value = res.length;
+    } else {
+      console.warn('返回的图书数据格式不正确:', res);
+      books.value = [];
+      total.value = 0;
+    }
+    
+    // 处理封面图片默认值
+    books.value.forEach(book => {
+      if (!book.coverImage) {
+        book.coverImage = 'https://via.placeholder.com/150x200/e0e0e0/808080?text=暂无封面';
+      }
+    });
   } catch (error) {
     console.error('加载图书列表失败', error);
+    ElMessage.error('加载图书列表失败: ' + (error.message || '请检查网络或后端服务'));
+    books.value = [];
+    total.value = 0;
   } finally {
     loading.value = false;
   }
@@ -382,8 +418,8 @@ const handleViewDetail = (book) => {
 
 .book-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 25px;
   margin-bottom: 20px;
 }
 
@@ -391,23 +427,28 @@ const handleViewDetail = (book) => {
   width: 100%;
   transition: all 0.3s;
   height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  border-radius: 8px;
 }
 
 .book-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
 .book-cover {
   position: relative;
-  height: 220px;
+  height: 240px;
   overflow: hidden;
+  background-color: #f5f7fa;
 }
 
 .book-cover .el-image {
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
 .book-status {
@@ -416,10 +457,12 @@ const handleViewDetail = (book) => {
   right: 0;
   background-color: #F56C6C;
   color: white;
-  padding: 3px 10px;
+  padding: 4px 10px;
   font-size: 12px;
   border-top-left-radius: 4px;
   border-bottom-left-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 1;
 }
 
 .book-status.available {
@@ -433,11 +476,15 @@ const handleViewDetail = (book) => {
 .book-title {
   font-size: 16px;
   font-weight: bold;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
   color: #303133;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.4;
+  height: 2.8em;
 }
 
 .book-author {
