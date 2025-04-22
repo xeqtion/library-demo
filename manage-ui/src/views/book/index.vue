@@ -82,7 +82,7 @@
     >
       <el-form
         :model="bookForm"
-        :rules="bookRules"
+        :rules="rules"
         ref="bookFormRef"
         label-width="100px"
         label-position="right"
@@ -183,6 +183,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getBookList, getBookCategories, createBook, updateBook, deleteBook } from '../../api/index';
+import { Plus } from '@element-plus/icons-vue';
 
 // 搜索表单
 const searchForm = ref({
@@ -215,40 +216,83 @@ const bookForm = ref({
   title: '',
   author: '',
   isbn: '',
-  category: '',
-  description: '',
-  totalCopies: 1,
-  availableCopies: 1,
-  coverImage: '',
-  publisher: '',
-  publishYear: new Date().getFullYear()
+  category: '',  // 分类ID
+  publisher: '', // 出版社ID
+  publishYear: '',
+  totalCopies: 0,
+  availableCopies: 0,
+  price: 0,
+  coverUrl: '',
+  description: ''
 });
 
-// 表单校验规则
-const bookRules = ref({
+// 表单验证规则
+const rules = {
   title: [
-    { required: true, message: '请输入书名', trigger: 'blur' }
+    { required: true, message: '请输入图书标题', trigger: 'blur' },
+    { min: 1, max: 100, message: '标题长度应在1-100个字符之间', trigger: 'blur' }
   ],
   author: [
-    { required: true, message: '请输入作者', trigger: 'blur' }
+    { required: true, message: '请输入作者', trigger: 'blur' },
+    { min: 1, max: 50, message: '作者名称长度应在1-50个字符之间', trigger: 'blur' }
   ],
   isbn: [
     { required: true, message: '请输入ISBN', trigger: 'blur' },
-    { pattern: /^[0-9-]+$/, message: 'ISBN格式不正确', trigger: 'blur' }
+    { pattern: /^(?:\d[- ]?){9}[\dX]$|^(?:\d[- ]?){13}$/, message: 'ISBN格式不正确', trigger: 'blur' }
   ],
   category: [
-    { required: true, message: '请选择分类', trigger: 'change' }
-  ],
-  totalCopies: [
-    { required: true, message: '请输入总数量', trigger: 'blur' }
+    { required: true, message: '请选择图书分类', trigger: 'change' }
   ],
   publisher: [
-    { required: true, message: '请输入出版社', trigger: 'blur' }
+    { required: true, message: '请选择出版社', trigger: 'change' }
+  ],
+  totalCopies: [
+    { required: true, message: '请输入总册数', trigger: 'blur' },
+    { type: 'number', message: '总册数必须为数字', trigger: 'blur' },
+    { validator: (rule, value, callback) => {
+        if (value < 0) {
+          callback(new Error('总册数不能小于0'));
+        } else {
+          // 当总册数变化时，检查可借册数是否合法
+          if (bookForm.value.availableCopies > value) {
+            bookForm.value.availableCopies = value;
+          }
+          callback();
+        }
+      }, trigger: 'blur' 
+    }
+  ],
+  availableCopies: [
+    { required: true, message: '请输入可借册数', trigger: 'blur' },
+    { type: 'number', message: '可借册数必须为数字', trigger: 'blur' },
+    { validator: (rule, value, callback) => {
+        if (value < 0) {
+          callback(new Error('可借册数不能小于0'));
+        } else if (value > bookForm.value.totalCopies) {
+          callback(new Error('可借册数不能大于总册数'));
+        } else {
+          callback();
+        }
+      }, trigger: 'blur'
+    }
   ],
   publishYear: [
-    { required: true, message: '请选择出版年份', trigger: 'blur' }
+    { required: true, message: '请输入出版年份', trigger: 'blur' },
+    { type: 'number', message: '出版年份必须为数字', trigger: 'blur' },
+    { validator: (rule, value, callback) => {
+        const currentYear = new Date().getFullYear();
+        if (value < 1800 || value > currentYear) {
+          callback(new Error(`出版年份必须在1800-${currentYear}之间`));
+        } else {
+          callback();
+        }
+      }, trigger: 'blur'
+    }
+  ],
+  description: [
+    { max: 500, message: '描述不能超过500个字符', trigger: 'blur' }
   ]
-});
+};
 
 // 表单引用
 const bookFormRef = ref(null);
@@ -274,10 +318,68 @@ const fetchBookList = async () => {
   loading.value = true;
   try {
     const res = await getBookList(pageNum.value, pageSize.value, searchForm.value);
-    bookList.value = res.list;
-    total.value = res.total;
+    console.log('获取到的图书数据:', res);
+    
+    // 改进数据解析逻辑，处理不同格式的响应
+    if (res && res.data) {
+      if (res.data.list && Array.isArray(res.data.list)) {
+        bookList.value = res.data.list;
+        total.value = res.data.total || 0;
+      } else if (res.data.records && Array.isArray(res.data.records)) {
+        bookList.value = res.data.records;
+        total.value = res.data.total || 0;
+      } else {
+        bookList.value = [];
+        total.value = 0;
+      }
+    } else if (res && res.list && Array.isArray(res.list)) {
+      bookList.value = res.list;
+      total.value = res.total || 0;
+    } else if (res && res.records && Array.isArray(res.records)) {
+      bookList.value = res.records;
+      total.value = res.total || 0;
+    } else if (res && Array.isArray(res)) {
+      bookList.value = res;
+      total.value = res.length;
+    } else {
+      console.warn('返回的图书数据格式不正确:', res);
+      bookList.value = [];
+      total.value = 0;
+    }
+    
+    // 对图书列表进行去重处理
+    const uniqueMap = new Map();
+    bookList.value.forEach(book => {
+      // 如果不存在相同ID的图书，则添加到Map中
+      if (!uniqueMap.has(book.id)) {
+        uniqueMap.set(book.id, book);
+      }
+    });
+    
+    // 将Map转换为数组
+    bookList.value = Array.from(uniqueMap.values());
+    
+    // 处理封面图片默认值
+    bookList.value.forEach(book => {
+      if (!book.coverImage) {
+        book.coverImage = 'https://via.placeholder.com/150x200/e0e0e0/808080?text=暂无封面';
+      }
+      // 确保数字类型字段是数字
+      if (book.totalCopies && typeof book.totalCopies === 'string') {
+        book.totalCopies = parseInt(book.totalCopies, 10) || 0;
+      }
+      if (book.availableCopies && typeof book.availableCopies === 'string') {
+        book.availableCopies = parseInt(book.availableCopies, 10) || 0;
+      }
+      if (book.publishYear && typeof book.publishYear === 'string') {
+        book.publishYear = parseInt(book.publishYear, 10) || new Date().getFullYear();
+      }
+    });
   } catch (error) {
     console.error('加载图书列表失败', error);
+    ElMessage.error('加载图书列表失败: ' + (error.message || '请检查网络或后端服务'));
+    bookList.value = [];
+    total.value = 0;
   } finally {
     loading.value = false;
   }
