@@ -141,9 +141,20 @@ export function reviewBorrowing(id, status, remarks) {
 
 // 归还图书
 export function returnBook(id) {
-  const apiPromise = axios.put(`/borrowings/return/${id}`);
-  
-  return apiPromise.catch(error => {
+  // 先获取借阅记录详情
+  return axios.get(`/borrowings/${id}`).then(response => {
+    const borrowing = response.data;
+    // 如果状态是APPROVED或BORROWED，都视为可归还状态
+    if (borrowing.status === 'APPROVED' || borrowing.status === 'BORROWED') {
+      console.log('借阅状态正确，准备归还');
+      return axios.put(`/borrowings/return/${id}`);
+    } else if (borrowing.status === 'OVERDUE') {
+      console.log('图书已逾期，执行归还');
+      return axios.put(`/borrowings/return/${id}`);
+    } else {
+      return Promise.reject(new Error('只能归还已借出或逾期的图书'));
+    }
+  }).catch(error => {
     if (error.response && error.response.status === 403) {
       console.warn('归还图书权限不足，使用模拟实现', error);
       return {

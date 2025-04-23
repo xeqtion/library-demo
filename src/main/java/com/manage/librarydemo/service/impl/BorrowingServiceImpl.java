@@ -147,7 +147,7 @@ public class BorrowingServiceImpl implements BorrowingService {
         }
         
         // 如果审核通过，更新图书库存
-        if (status == Borrowing.BorrowingStatus.BORROWED) {
+        if (status == Borrowing.BorrowingStatus.APPROVED) {
             Book book = borrowing.getBook();
             if (book.getAvailableCopies() <= 0) {
                 throw new IllegalArgumentException("图书库存不足");
@@ -166,9 +166,10 @@ public class BorrowingServiceImpl implements BorrowingService {
         Borrowing borrowing = borrowingRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("借阅记录不存在"));
         
-        // 只有借出状态才能归还
+        // 允许APPROVED、BORROWED和OVERDUE状态的图书归还
         if (borrowing.getStatus() != Borrowing.BorrowingStatus.BORROWED && 
-                borrowing.getStatus() != Borrowing.BorrowingStatus.OVERDUE) {
+            borrowing.getStatus() != Borrowing.BorrowingStatus.OVERDUE &&
+            borrowing.getStatus() != Borrowing.BorrowingStatus.APPROVED) {
             throw new IllegalArgumentException("只能归还已借出或逾期的图书");
         }
         

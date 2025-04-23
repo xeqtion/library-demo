@@ -507,16 +507,6 @@ const submitReview = async () => {
   }
 };
 
-// 添加一个简单的状态映射函数，用于归还功能
-const mapStatusForReturn = (status) => {
-  // 将前端状态映射为可以归还的状态
-  // APPROVED 和 BORROWED 在后端可能是同一个状态
-  if (status === 'APPROVED') {
-    return 'BORROWED';
-  }
-  return status;
-};
-
 // 归还图书
 const handleReturn = (row) => {
   ElMessageBox.confirm(`确认归还《${row.bookTitle}》？`, '确认归还', {
@@ -525,15 +515,10 @@ const handleReturn = (row) => {
     type: 'warning'
   }).then(async () => {
     try {
-      // 先检查状态，如果状态不是BORROWED或OVERDUE，自动更新为BORROWED再归还
-      if (row.status !== 'BORROWED' && row.status !== 'OVERDUE') {
-        console.log('当前状态不是已借出或逾期，尝试调整状态');
-        // 这里进行状态映射，仅在前端处理
-        const mappedStatus = mapStatusForReturn(row.status);
-        if (mappedStatus !== 'BORROWED' && mappedStatus !== 'OVERDUE') {
-          // 如果映射后的状态仍然不正确，给用户提示
-          ElMessage.warning(`当前图书状态为"${getBorrowingStatusText(row.status)}"，系统将尝试归还`);
-        }
+      // 检查并映射状态
+      if (row.status === 'APPROVED' || row.status === 'BORROWED') {
+        console.log('状态为已借出，准备归还');
+        row.status = 'BORROWED';
       }
       
       await returnBook(row.id);
@@ -541,11 +526,10 @@ const handleReturn = (row) => {
       fetchBorrowingList();
     } catch (error) {
       console.error('归还图书失败', error);
-      // 提供更友好的错误提示
       let errorMsg = '归还图书失败';
       if (error.message) {
         if (error.message.includes('只能归还已借出或逾期的图书')) {
-          errorMsg = '该图书状态不允许归还，请确认图书状态正确';
+          errorMsg = '该图书当前状态不允许归还，请确认图书状态是否为"已借出"或"已逾期"';
         } else {
           errorMsg = `归还图书失败: ${error.message}`;
         }
