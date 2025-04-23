@@ -6,12 +6,6 @@
           <el-input v-model="searchForm.keyword" placeholder="用户名/姓名/邮箱" clearable />
         </el-form-item>
         <el-form-item>
-          <el-select v-model="searchForm.role" placeholder="角色" clearable>
-            <el-option label="用户" value="USER" />
-            <el-option label="管理员" value="ADMIN" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="resetSearch">重置</el-button>
         </el-form-item>
@@ -179,8 +173,7 @@ const userInfo = ref({});
 
 // 搜索表单
 const searchForm = ref({
-  keyword: '',
-  role: ''
+  keyword: ''
 });
 
 // 表格数据
@@ -327,8 +320,7 @@ const handleSearch = () => {
 // 重置搜索
 const resetSearch = () => {
   searchForm.value = {
-    keyword: '',
-    role: ''
+    keyword: ''
   };
   pageNum.value = 1;
   fetchUserList();

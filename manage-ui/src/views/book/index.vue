@@ -6,11 +6,6 @@
           <el-input v-model="searchForm.keyword" placeholder="书名/作者/ISBN" clearable />
         </el-form-item>
         <el-form-item>
-          <el-select v-model="searchForm.category" placeholder="分类" clearable>
-            <el-option v-for="category in categories" :key="category" :label="category" :value="category" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="resetSearch">重置</el-button>
         </el-form-item>
@@ -212,8 +207,7 @@ import { Plus } from '@element-plus/icons-vue';
 
 // 搜索表单
 const searchForm = ref({
-  keyword: '',
-  category: ''
+  keyword: ''
 });
 
 // 表格数据
@@ -385,8 +379,7 @@ const handleSearch = () => {
 // 重置搜索
 const resetSearch = () => {
   searchForm.value = {
-    keyword: '',
-    category: ''
+    keyword: ''
   };
   pageNum.value = 1;
   fetchBooks();
