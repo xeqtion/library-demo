@@ -542,18 +542,19 @@ const handleReturn = (borrowing) => {
 };
 
 // 取消借阅申请
-const handleCancel = (borrowing) => {
-  ElMessageBox.confirm('确认取消该借阅申请？', '取消确认', {
+const handleCancel = (item) => {
+  ElMessageBox.confirm(`确认取消《${item.bookTitle}》的借阅申请？`, '取消确认', {
     confirmButtonText: '确认',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
     try {
-      await cancelBorrowing(borrowing.id);
+      await cancelBorrowing(item.id);
       ElMessage.success('借阅申请已取消');
-      fetchBorrowings();
+      fetchBorrowings(); // 刷新列表
     } catch (error) {
-      console.error('取消失败', error);
+      console.error('取消借阅失败', error);
+      ElMessage.error('取消借阅失败: ' + (error.message || '未知错误'));
     }
   }).catch(() => {});
 };

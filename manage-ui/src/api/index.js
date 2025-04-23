@@ -388,14 +388,14 @@ export const getUserById = (id) => {
   
   return handleApiError(apiPromise, () => {
     // 模拟获取用户详情
-    return {
+      return {
       id: id,
       username: 'user_' + id,
       name: '用户' + id,
       email: 'user' + id + '@example.com',
-      role: 'READER',
+        role: 'READER',
       enabled: true
-    };
+      };
   });
 };
 
@@ -834,12 +834,12 @@ export const getMyBorrowings = (pageNum, pageSize, params) => {
   
   // 如果没有传入userId，则从localStorage获取
   if (!requestParams.userId) {
-    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
     if (userInfo.id) {
       requestParams.userId = userInfo.id;
     } else {
       console.warn('未找到用户ID，请确保用户已登录');
-    }
+  }
   }
   
   return instance.get('/borrowings/my', { params: requestParams });

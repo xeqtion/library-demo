@@ -46,6 +46,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/books/**").authenticated()
                 .requestMatchers("/api/borrowings/my").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/borrowings").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/borrowings/{id}").authenticated()
                 .requestMatchers("/api/borrowings/**").hasAuthority("ADMIN")
                 .anyRequest().authenticated()
             )

@@ -99,7 +99,7 @@
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="bookTitle" label="图书" min-width="180" show-overflow-tooltip>
         <template #default="scope">
-          <div class="book-title">《{{ scope.row.bookTitle }}》</div>
+              <div class="book-title">《{{ scope.row.bookTitle }}》</div>
         </template>
       </el-table-column>
       <el-table-column prop="userName" label="借阅人" width="120" />
@@ -200,7 +200,7 @@
         <div class="detail-header">
           <div class="detail-book">
             <img 
-              :src="currentBorrowing.bookCover || 'https://via.placeholder.com/120x160'" 
+              :src="currentBorrowing.bookCover || 'https://via.placeholder.com/120x160'"
               class="book-cover"
             />
             <div class="detail-book-info">
@@ -407,7 +407,7 @@ const fetchBorrowingList = async () => {
       if (res.pageNum) pageNum.value = res.pageNum;
       if (res.pageSize) pageSize.value = res.pageSize;
     } else if (res && res.list) {
-      borrowingList.value = res.list;
+    borrowingList.value = res.list;
       total.value = res.total || 0;
     } else if (Array.isArray(res)) {
       borrowingList.value = res;

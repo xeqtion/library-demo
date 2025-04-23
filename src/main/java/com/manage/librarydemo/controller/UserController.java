@@ -77,8 +77,8 @@ public class UserController {
     @PreAuthorize("hasAuthority('ADMIN')")
     public Result<Void> delete(@PathVariable Long id) {
         try {
-            userService.delete(id);
-            return Result.success();
+        userService.delete(id);
+        return Result.success();
         } catch (IllegalStateException e) {
             // 用户有借阅记录等无法删除的情况
             return Result.error(e.getMessage());

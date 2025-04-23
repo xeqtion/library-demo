@@ -324,7 +324,7 @@ const fetchBooks = async () => {
         total.value = 0;
       }
     } else if (res && res.list && Array.isArray(res.list)) {
-      bookList.value = res.list;
+    bookList.value = res.list;
       total.value = res.total || 0;
     } else if (res && res.records && Array.isArray(res.records)) {
       bookList.value = res.records;
